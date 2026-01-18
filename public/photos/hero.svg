@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200" fill="none">
+  <rect width="900" height="1200" fill="#E5E2DD"/>
+  <rect x="60" y="80" width="780" height="1040" rx="32" fill="#FAF9F6" stroke="#D4CDC4" stroke-width="4" stroke-dasharray="10 10"/>
+  <text x="450" y="600" text-anchor="middle" fill="#2A2A2A" font-family="Cormorant Garamond, serif" font-size="56" letter-spacing="6">
+    Hero Photo
+  </text>
+  <text x="450" y="660" text-anchor="middle" fill="#6F6F6F" font-family="Inter, sans-serif" font-size="20" letter-spacing="3">
+    Replace with your image
+  </text>
+</svg>

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000" fill="none">
+  <rect width="800" height="1000" fill="#F0EDE7"/>
+  <rect x="48" y="60" width="704" height="880" rx="24" fill="#FAF9F6" stroke="#D4CDC4" stroke-width="4"/>
+  <text x="400" y="520" text-anchor="middle" fill="#2A2A2A" font-family="Cormorant Garamond, serif" font-size="48" letter-spacing="5">Photo 12</text>
+</svg>
