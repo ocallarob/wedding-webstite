@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
+import SaveTheDatePage from './save-the-date/page';
 import { site } from '../src/content/site';
 import { Monogram } from '../src/components/Monogram';
 
@@ -17,8 +17,9 @@ const quickInfo = [
   { label: 'RSVP', value: site.rsvpDeadline },
 ];
 
-export default function HomePageRedirect() {
-  redirect('/save-the-date');
+export default function HomePage() {
+  // Temporary: show Save the Date content while the main homepage is in progress.
+  return <SaveTheDatePage />;
 }
 
 function LegacyHomePage() {
