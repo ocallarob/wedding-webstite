@@ -39,9 +39,11 @@ export default function SaveTheDatePage() {
               <div className="space-y-4 text-sm text-muted">
                 <div className="border-t border-stone/50" />
                 <div className="space-y-2">
-                  <p className="rounded-xl border border-stone/60 bg-white/70 px-5 py-3 text-charcoal">
+                  <br/>
+                  {/* <p className="rounded-xl border border-stone/60 bg-white/70 px-5 py-3 text-charcoal"> */}
+                  {/* <p className="rounded-xl px-5 py-3 text-charcoal">
                     Formal invitation to follow.
-                  </p>
+                  </p> */}
                   <p className="text-[11px] uppercase tracking-[0.2em] text-charcoal/60">
                     More details soon
                   </p>
