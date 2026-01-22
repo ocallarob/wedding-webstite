@@ -23,11 +23,67 @@ export const metadata: Metadata = {
   description: `${site.coupleNames} celebrate at ${site.locationText} on ${site.dateText}.`,
   icons: {
     icon: [
-      { url: '/photos/ar-monogram.png', media: '(prefers-color-scheme: light)' },
-      { url: '/photos/ar-monogram-white.png', media: '(prefers-color-scheme: dark)' },
+      // Light mode
+      {
+        url: '/photos/ar-monogram-16.png',
+        sizes: '16x16',
+        type: 'image/png',
+        media: '(prefers-color-scheme: light)',
+      },
+      {
+        url: '/photos/ar-monogram-32.png',
+        sizes: '32x32',
+        type: 'image/png',
+        media: '(prefers-color-scheme: light)',
+      },
+      {
+        url: '/photos/ar-monogram-64.png',
+        sizes: '64x64',
+        type: 'image/png',
+        media: '(prefers-color-scheme: light)',
+      },
+      {
+        url: '/photos/ar-monogram.png',
+        sizes: '512x512',
+        type: 'image/png',
+        media: '(prefers-color-scheme: light)',
+      },
+
+      // Dark mode
+      {
+        url: '/photos/ar-monogram-white-16.png',
+        sizes: '16x16',
+        type: 'image/png',
+        media: '(prefers-color-scheme: dark)',
+      },
+      {
+        url: '/photos/ar-monogram-white-32.png',
+        sizes: '32x32',
+        type: 'image/png',
+        media: '(prefers-color-scheme: dark)',
+      },
+      {
+        url: '/photos/ar-monogram-white-64.png',
+        sizes: '64x64',
+        type: 'image/png',
+        media: '(prefers-color-scheme: dark)',
+      },
+      {
+        url: '/photos/ar-monogram-white.png',
+        sizes: '512x512',
+        type: 'image/png',
+        media: '(prefers-color-scheme: dark)',
+      },
     ],
-    shortcut: '/photos/ar-monogram.png',
+    apple: {
+      url: '/photos/ar-monogram-180.png',
+      sizes: '180x180',
+      type: 'image/png',
+    },
+
+    // shortcut: '/photos/ar-monogram-32.png',
   },
+
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

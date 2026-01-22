@@ -11,7 +11,7 @@ export default function SaveTheDatePage() {
 
   const eventDate = useMemo(() => {
     const [day, month, year] = site.date.split('/').map(Number);
-    const parsed = new Date(year, month - 1, day, 13, 30, 0, 0);
+    const parsed = new Date(year, month - 1, day);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }, []);
 
