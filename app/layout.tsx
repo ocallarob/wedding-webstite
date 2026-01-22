@@ -21,6 +21,13 @@ const body = Inter({
 export const metadata: Metadata = {
   title: `${site.coupleNames} | Wedding Weekend`,
   description: `${site.coupleNames} celebrate at ${site.locationText} on ${site.dateText}.`,
+  icons: {
+    icon: [
+      { url: '/photos/ar-monogram.png', media: '(prefers-color-scheme: light)' },
+      { url: '/photos/ar-monogram-white.png', media: '(prefers-color-scheme: dark)' },
+    ],
+    shortcut: '/photos/ar-monogram.png',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
