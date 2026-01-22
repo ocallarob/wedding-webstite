@@ -4,7 +4,4 @@ node_modules
 .env
 npm-debug.log*
 .vercel
-app/save-the-date/page.tsx
-public/photos/hero.jpg
-public/photos/hero_bw.jpg
 out
