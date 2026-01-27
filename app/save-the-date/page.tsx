@@ -114,7 +114,7 @@ export default function SaveTheDatePage() {
           src={site.heroImage}
           alt={`Portrait of ${site.coupleNames}`}
           fill
-          className="bg-sand object-contain md:object-cover"
+          className="bg-sand object-cover object-bottom"
           priority
           sizes="(min-width: 768px) 50vw, 100vw"
         />
