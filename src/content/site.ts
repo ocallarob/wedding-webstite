@@ -1,7 +1,9 @@
 export const site = {
   coupleNames: 'Alannah & Rob',
-  dateText: 'August 28, 2026',
+  dateText: 'Friday, August 28 2026',
   date: '28/08/2026',
+  day2Date: '29/08/2026',
+  day2DateText: 'Saturday, August 29 2026',
   locationHotel: 'The Lough Erne Resort',
   locationText: 'Enniskillen, Co. Fermanagh',
   // Serve from the bundled assets (better for static S3 hosting)

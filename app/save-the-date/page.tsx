@@ -93,12 +93,20 @@ export default function SaveTheDatePage() {
                   </a>
                   <p className="text-base leading-relaxed text-charcoal/80">{site.locationText}</p>
                 </div>
+                <div className="space-y-4">
+                  <p className="text-xs uppercase tracking-[0.16em] text-charcoal/70">
+                    + Join us for Day 2
+                  </p>
+                  <p className="leading-relaxed text-charcoal/80">
+                    {site.day2DateText}
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-4 text-base text-charcoal/80" id="save-the-date-details">
                 <div className="border-t border-stone/50" />
                 <div className="space-y-3">
-                  <br/> 
+                  <br/>
                   <p className="text-xs uppercase tracking-[0.16em] text-charcoal/70">
                     More details soon
                   </p>
