@@ -5,16 +5,15 @@ const PUBLIC_FILE = /\.(.*)$/;
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-
-  const isSaveTheDate = pathname === '/save-the-date' || pathname.startsWith('/save-the-date/');
+  const isRoot = pathname === '/';
   const isInternal = pathname.startsWith('/_next') || pathname.startsWith('/api');
   const isPublicAsset = PUBLIC_FILE.test(pathname);
 
-  if (isSaveTheDate || isInternal || isPublicAsset) {
+  if (isRoot || isInternal || isPublicAsset) {
     return NextResponse.next();
   }
 
-  return NextResponse.redirect(new URL('/save-the-date', request.url));
+  return NextResponse.redirect(new URL('/', request.url));
 }
 
 export const config = {

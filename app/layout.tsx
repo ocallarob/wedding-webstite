@@ -1,19 +1,19 @@
 import type { Metadata } from 'next';
-import { Inter, Cormorant_Garamond } from 'next/font/google';
+import { Cormorant_Garamond, Jost } from 'next/font/google';
 import './globals.css';
 import { site } from '../src/content/site';
 import { SiteFrame } from '../src/components/SiteFrame';
 
 const heading = Cormorant_Garamond({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+  weight: ['300', '400', '500'],
   variable: '--font-heading',
   display: 'swap',
 });
 
-const body = Inter({
+const body = Jost({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+  weight: ['300', '400', '500'],
   variable: '--font-body',
   display: 'swap',
 });

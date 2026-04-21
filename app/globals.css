@@ -4,12 +4,12 @@
 
 :root {
   color-scheme: light;
-  --bg: #faf9f6;
-  --text: #2a2a2a;
-  --muted: #6f6f6f;
-  --accent: #2a2a2a;
-  --accent-2: #6f6f6f;
-  --border: #e5e2dd;
+  --bg: #fdfbf7;
+  --text: #3a3530;
+  --muted: #7a756f;
+  --accent: #9c7a8c;
+  --accent-2: #dbb8b8;
+  --border: #e8e2da;
 }
 
 body {
@@ -17,25 +17,25 @@ body {
 }
 
 a {
-  @apply text-charcoal underline-offset-4 decoration-charcoal/20 hover:underline;
+  @apply text-charcoal underline-offset-4 decoration-mauve/30 hover:underline;
 }
 
 .btn {
-  @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-charcoal/40 focus:ring-offset-ivory;
+  @apply inline-flex items-center justify-center rounded-lg border px-4 py-2 text-xs uppercase tracking-[0.22em] transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-mauve/40 focus:ring-offset-ivory;
 }
 
 .btn-primary {
-  @apply border border-charcoal text-charcoal hover:bg-charcoal hover:text-ivory;
+  @apply border-blush bg-blush text-charcoal hover:bg-mauve hover:text-ivory;
 }
 
 .btn-outline {
-  @apply border border-stone text-charcoal hover:bg-ivory/60;
+  @apply border-mauve/50 bg-ivory text-mauve hover:bg-mauve hover:text-ivory;
 }
 
 .card {
-  @apply rounded-xl border border-stone bg-white/80;
+  @apply rounded-xl border border-stone bg-ivory/80;
 }
 
 .label-serif {
-  @apply font-heading tracking-wide text-sm uppercase text-muted;
+  @apply font-heading tracking-[0.16em] text-sm uppercase text-mauve;
 }
