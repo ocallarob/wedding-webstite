@@ -8,6 +8,30 @@ const quickInfo = [
   { label: 'RSVP', value: 'Coming soon' },
 ];
 
+type WeekendEvent = {
+  time: string;
+  title: string;
+  location: string;
+  locationUrl?: string;
+};
+
+type WeekendDay = {
+  title: string;
+  date: string;
+  events: WeekendEvent[];
+};
+
+const weekendSchedule: WeekendDay[] = site.weekendSchedule.map((day) => ({
+  title: day.title,
+  date: day.date,
+  events: day.events.map((event) => ({
+    time: event.time,
+    title: event.title,
+    location: event.location,
+    locationUrl: event.locationUrl,
+  })),
+}));
+
 export default function HomePage() {
   return (
     <div className="relative overflow-hidden bg-ivory">
@@ -89,7 +113,7 @@ export default function HomePage() {
             <h2 className="font-heading text-4xl font-light tracking-[0.05em] text-charcoal">Our Wedding Weekend</h2>
           </div>
           <div className="grid gap-5 md:grid-cols-3">
-            {site.weekendSchedule.slice(0, 3).map((day) => (
+            {weekendSchedule.slice(0, 3).map((day) => (
               <div key={day.title} className="rounded-2xl border border-stone bg-ivory/80 p-5">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-mauve">{day.date}</p>
                 <h3 className="mt-2 font-heading text-2xl font-light text-charcoal">{day.title}</h3>
