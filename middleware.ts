@@ -9,7 +9,9 @@ export function middleware(request: NextRequest) {
   const isInternal = pathname.startsWith('/_next') || pathname.startsWith('/api');
   const isPublicAsset = PUBLIC_FILE.test(pathname);
 
-  if (isRoot || isInternal || isPublicAsset) {
+  const isAllowed = pathname.startsWith('/rsvp') || pathname.startsWith('/dashboard');
+
+  if (isRoot || isInternal || isPublicAsset || isAllowed) {
     return NextResponse.next();
   }
 
