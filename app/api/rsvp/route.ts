@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '../../../src/lib/db';
+import { checkRateLimit } from '../../../src/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,13 @@ function normaliseDietary(input: unknown): DietaryValue {
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get('token');
   if (!token) return NextResponse.json({ error: 'token required' }, { status: 400 });
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+
+  const ipAllowed = await checkRateLimit(`rsvp:get:ip:${ip}`, { limit: 120, windowSeconds: 60 });
+  const tokenAllowed = await checkRateLimit(`rsvp:get:token:${token}`, { limit: 60, windowSeconds: 60 });
+  if (!ipAllowed || !tokenAllowed) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
 
   const households = await sql`
     SELECT id, label, contact_email FROM households WHERE invite_token = ${token}
@@ -48,6 +56,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: Request) {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
   const body = await request.json();
   const { token, members, song, message } = body as {
     token?: string;
@@ -57,6 +66,11 @@ export async function POST(request: Request) {
   };
 
   if (!token) return NextResponse.json({ error: 'token required' }, { status: 400 });
+  const ipAllowed = await checkRateLimit(`rsvp:post:ip:${ip}`, { limit: 30, windowSeconds: 60 });
+  const tokenAllowed = await checkRateLimit(`rsvp:post:token:${token}`, { limit: 15, windowSeconds: 60 });
+  if (!ipAllowed || !tokenAllowed) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
   if (!Array.isArray(members) || members.length === 0) {
     return NextResponse.json({ error: 'members required' }, { status: 400 });
   }

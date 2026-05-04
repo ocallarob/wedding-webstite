@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { sql } from '../../../src/lib/db';
 import { ADMIN_COOKIE_NAME, hasAdminAuth, isSameOriginRequest } from '../../../src/lib/adminAuth';
+import { createAdminSessionToken, SESSION_TTL_SECONDS } from '../../../src/lib/adminSession';
 
 export const dynamic = 'force-dynamic';
-const ONE_WEEK_SECONDS = 60 * 60 * 24 * 7;
 const REMINDER_BATCH_LIMIT = 100;
 
 function buildReminderEmailHtml(displayName: string, rsvpUrl: string): string {
@@ -150,12 +150,12 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.redirect(new URL(nextPath, request.url));
-  response.cookies.set(ADMIN_COOKIE_NAME, adminSecret, {
+  response.cookies.set(ADMIN_COOKIE_NAME, createAdminSessionToken(adminSecret), {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     path: '/',
-    maxAge: ONE_WEEK_SECONDS,
+    maxAge: SESSION_TTL_SECONDS,
   });
   return response;
 }
