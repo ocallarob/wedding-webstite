@@ -2,6 +2,8 @@ import { sql } from '../../src/lib/db';
 import { site } from '../../src/content/site';
 import { ExpandableCell } from './ExpandableCell';
 import { cookies } from 'next/headers';
+import { verifyAdminSessionToken } from '../../src/lib/adminSession';
+import { createCsrfToken } from '../../src/lib/csrf';
 
 export const dynamic = 'force-dynamic';
 
@@ -79,7 +81,9 @@ export default async function DashboardPage({ searchParams }: Props) {
   const { error, reminder, sent, failed } = await searchParams;
   const cookieStore = await cookies();
   const adminSession = cookieStore.get('admin_session')?.value;
-  const isAuthorized = adminSession === process.env.ADMIN_SECRET;
+  const adminSecret = process.env.ADMIN_SECRET;
+  const isAuthorized = !!adminSecret && verifyAdminSessionToken(adminSession, adminSecret);
+  const csrfToken = isAuthorized && adminSecret && adminSession ? createCsrfToken(adminSession, adminSecret) : '';
 
   if (!isAuthorized) {
     return (
@@ -156,10 +160,12 @@ export default async function DashboardPage({ searchParams }: Props) {
         <div className="flex items-center justify-center gap-4 pt-1">
           <form action="/api/dashboard" method="POST">
             <input type="hidden" name="action" value="send_reminders" />
+            <input type="hidden" name="csrf_token" value={csrfToken} />
             <button type="submit" className="text-xs text-mauve underline-offset-4 hover:underline hover:text-charcoal transition-colors">Send reminder batch</button>
           </form>
           <form action="/api/dashboard" method="POST">
             <input type="hidden" name="action" value="logout" />
+            <input type="hidden" name="csrf_token" value={csrfToken} />
             <button type="submit" className="text-xs text-muted underline-offset-4 hover:underline hover:text-charcoal transition-colors">Log out</button>
           </form>
         </div>

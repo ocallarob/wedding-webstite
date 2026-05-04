@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { sql } from '../../../../src/lib/db';
+import { hasAdminAuth, isSameOriginRequest } from '../../../../src/lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,11 +30,9 @@ function buildEmailHtml(displayName: string, rsvpUrl: string): string {
 </html>`;
 }
 
-export async function POST(request: Request) {
-  const secret = request.headers.get('x-admin-secret');
-  if (!secret || secret !== process.env.ADMIN_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+export async function POST(request: NextRequest) {
+  if (!hasAdminAuth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!isSameOriginRequest(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const resend = new Resend(process.env.RESEND_API_KEY);
   const allUninvited = await sql`

@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { AttendanceCard } from './AttendanceCard';
 import { DietarySelect, type DietaryValue } from './DietarySelect';
 
@@ -38,6 +38,7 @@ export function RsvpForm({ token, householdLabel, initialMembers, alreadyRsvpd, 
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [song, setSong] = useState(initialSong);
   const [message, setMessage] = useState(initialMessage);
+  const [loadedExisting, setLoadedExisting] = useState(alreadyRsvpd);
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -59,6 +60,28 @@ export function RsvpForm({ token, householdLabel, initialMembers, alreadyRsvpd, 
   const updateMember = (id: string, patch: Partial<Member>) => {
     setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
   };
+
+  useEffect(() => {
+    let cancelled = false;
+    async function hydrateExisting() {
+      try {
+        const res = await fetch(`/api/rsvp?token=${encodeURIComponent(token)}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        if (Array.isArray(data?.members)) setMembers(data.members);
+        if (typeof data?.song === 'string') setSong(data.song);
+        if (typeof data?.message === 'string') setMessage(data.message);
+        if (data?.already_rsvpd === true) setLoadedExisting(true);
+      } catch {
+        // Best-effort hydration only.
+      }
+    }
+    hydrateExisting();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -103,7 +126,7 @@ export function RsvpForm({ token, householdLabel, initialMembers, alreadyRsvpd, 
           <p className="font-heading text-2xl font-light text-charcoal truncate">{title}</p>
           <StepIndicator current={step} total={totalSteps} />
         </div>
-        {alreadyRsvpd && (
+        {loadedExisting && (
           <p className="text-xs text-muted">
             Your previous RSVP has been loaded below. You can update your choices and submit again anytime.
           </p>
