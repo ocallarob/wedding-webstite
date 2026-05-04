@@ -18,6 +18,8 @@ type Props = {
   householdLabel: string | null;
   initialMembers: Member[];
   alreadyRsvpd: boolean;
+  initialSong: string;
+  initialMessage: string;
 };
 
 function StepIndicator({ current, total }: { current: number; total: number }) {
@@ -32,13 +34,13 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
   );
 }
 
-export function RsvpForm({ token, householdLabel, initialMembers, alreadyRsvpd }: Props) {
+export function RsvpForm({ token, householdLabel, initialMembers, alreadyRsvpd, initialSong, initialMessage }: Props) {
   const [members, setMembers] = useState<Member[]>(initialMembers);
-  const [song, setSong] = useState('');
-  const [message, setMessage] = useState('');
+  const [song, setSong] = useState(initialSong);
+  const [message, setMessage] = useState(initialMessage);
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(alreadyRsvpd);
+  const [done, setDone] = useState(false);
   const [error, setError] = useState('');
 
   const totalSteps = 3;
@@ -101,13 +103,18 @@ export function RsvpForm({ token, householdLabel, initialMembers, alreadyRsvpd }
           <p className="font-heading text-2xl font-light text-charcoal truncate">{title}</p>
           <StepIndicator current={step} total={totalSteps} />
         </div>
+        {alreadyRsvpd && (
+          <p className="text-xs text-muted">
+            Your previous RSVP has been loaded below. You can update your choices and submit again anytime.
+          </p>
+        )}
       </div>
 
       <form onSubmit={handleSubmit}>
         {step === 1 && (
           <div className="px-7 pb-7 space-y-6">
             <div className="space-y-1">
-              <p className="label-serif text-sm">Will your household be joining us?</p>
+              <p className="label-serif text-sm">Will you be joining us?</p>
               <p className="text-xs text-muted">Select attendance for each person, for each event.</p>
             </div>
 

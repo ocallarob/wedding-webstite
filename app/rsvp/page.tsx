@@ -40,7 +40,11 @@ export default async function RsvpPage({ searchParams }: Props) {
     ORDER BY sort_order, created_at
   `) as Member[];
 
-  const rsvp = await sql`SELECT submitted_at FROM household_rsvps WHERE household_id = ${households[0].id}`;
+  const rsvp = await sql`
+    SELECT submitted_at, song, message
+    FROM household_rsvps
+    WHERE household_id = ${households[0].id}
+  `;
 
   const initialMembers = members.map((m) => ({
     id: m.id,
@@ -64,6 +68,8 @@ export default async function RsvpPage({ searchParams }: Props) {
         householdLabel={(households[0].label as string | null) ?? null}
         initialMembers={initialMembers}
         alreadyRsvpd={rsvp.length > 0}
+        initialSong={(rsvp[0]?.song as string | null) ?? ''}
+        initialMessage={(rsvp[0]?.message as string | null) ?? ''}
       />
     </div>
   );

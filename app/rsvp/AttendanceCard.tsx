@@ -25,7 +25,7 @@ export function AttendanceCard({ day, guestName, value, onChange }: Props) {
 
       <div className="rounded-2xl border border-stone bg-ivory/60 px-5 py-4 space-y-4">
         {/* Event info */}
-        <div>
+        <div className="min-h-[128px]">
           <p className="text-[11px] uppercase tracking-[0.22em] text-muted">{info.date}</p>
           <p className="font-heading text-xl font-light text-charcoal mt-0.5">{info.label}</p>
           <p className="text-xs text-muted mt-0.5 whitespace-pre-line">{info.detail}</p>

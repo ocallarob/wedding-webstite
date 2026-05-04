@@ -8,6 +8,7 @@ const ONE_WEEK_SECONDS = 60 * 60 * 24 * 7;
 const REMINDER_BATCH_LIMIT = 100;
 
 function isAuthorized(request: NextRequest) {
+  if (!process.env.ADMIN_SECRET) return false;
   const secret = request.headers.get('x-admin-secret');
   const cookieSecret = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
   return secret === process.env.ADMIN_SECRET || cookieSecret === process.env.ADMIN_SECRET;
@@ -98,11 +99,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
   const action = formData.get('action');
+  const adminSecret = process.env.ADMIN_SECRET;
 
   if (action === 'logout') {
     const response = NextResponse.redirect(new URL('/dashboard', request.url));
     response.cookies.delete(ADMIN_COOKIE_NAME);
     return response;
+  }
+
+  if (!adminSecret) {
+    return NextResponse.redirect(new URL('/dashboard?error=missing_admin_secret', request.url));
   }
 
   if (action === 'send_reminders') {
@@ -145,12 +151,12 @@ export async function POST(request: NextRequest) {
 
   const password = formData.get('password');
   const nextPath = String(formData.get('next') ?? '/dashboard');
-  if (typeof password !== 'string' || password !== process.env.ADMIN_SECRET) {
+  if (typeof password !== 'string' || password !== adminSecret) {
     return NextResponse.redirect(new URL('/dashboard?error=invalid_password', request.url));
   }
 
   const response = NextResponse.redirect(new URL(nextPath, request.url));
-  response.cookies.set(ADMIN_COOKIE_NAME, process.env.ADMIN_SECRET as string, {
+  response.cookies.set(ADMIN_COOKIE_NAME, adminSecret, {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',

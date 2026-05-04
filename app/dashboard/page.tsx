@@ -95,6 +95,11 @@ export default async function DashboardPage({ searchParams }: Props) {
             <input type="password" name="password" required className="w-full rounded-xl border border-stone bg-white px-3 py-2.5" />
           </label>
           {error === 'invalid_password' && <p className="text-xs text-red-700">Password incorrect. Try again.</p>}
+          {error === 'missing_admin_secret' && (
+            <p className="text-xs text-red-700">
+              Dashboard is not configured. Add `ADMIN_SECRET` to this environment and redeploy.
+            </p>
+          )}
           <button type="submit" className="btn btn-primary w-full">Open dashboard</button>
         </form>
       </div>
