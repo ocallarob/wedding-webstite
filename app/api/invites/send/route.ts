@@ -4,10 +4,16 @@ import { sql } from '../../../../src/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST() {
+export async function POST(request: Request) {
+  const secret = request.headers.get('x-admin-secret');
+  if (!secret || secret !== process.env.ADMIN_SECRET) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const resend = new Resend(process.env.RESEND_API_KEY);
+
   const guests = await sql`
-    SELECT id, name, email, token FROM guests WHERE invited_at IS NULL
+    SELECT id, name, partner_name, email, token FROM guests WHERE invited_at IS NULL
   `;
 
   if (guests.length === 0) {
@@ -19,12 +25,15 @@ export async function POST() {
   const results = await Promise.allSettled(
     guests.map(async (guest) => {
       const rsvpUrl = `${baseUrl}/rsvp?token=${guest.token}`;
+      const displayName = guest.partner_name
+        ? `${guest.name} & ${guest.partner_name}`
+        : guest.name as string;
 
       await resend.emails.send({
         from: 'Rob & Alannah <hello@alannah-rob.ie>',
         to: guest.email as string,
         subject: "You're invited — Rob & Alannah, 28 August 2026",
-        html: buildEmailHtml(guest.name as string, rsvpUrl),
+        html: buildEmailHtml(displayName, rsvpUrl),
       });
 
       await sql`UPDATE guests SET invited_at = now() WHERE id = ${guest.id}`;
@@ -37,7 +46,7 @@ export async function POST() {
   return NextResponse.json({ sent, failed });
 }
 
-function buildEmailHtml(name: string, rsvpUrl: string): string {
+function buildEmailHtml(displayName: string, rsvpUrl: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -61,7 +70,7 @@ function buildEmailHtml(name: string, rsvpUrl: string): string {
     </div>
 
     <div style="border:1px solid #e8e2da;border-radius:16px;padding:36px;background:#ffffff">
-      <p style="margin:0 0 16px;font-size:15px">Dear ${name},</p>
+      <p style="margin:0 0 16px;font-size:15px">Dear ${displayName},</p>
       <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:#3a3530">
         We would be so delighted to have you join us to celebrate our wedding weekend at the
         <strong>Lough Erne Resort, Co. Fermanagh</strong> on <strong>Friday, 28 August 2026</strong>.

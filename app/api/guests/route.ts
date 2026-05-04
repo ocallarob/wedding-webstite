@@ -9,14 +9,17 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const { name, email } = await request.json();
+  const body = await request.json();
+  const { name, email } = body;
   if (!name?.trim() || !email?.trim()) {
     return NextResponse.json({ error: 'name and email required' }, { status: 400 });
   }
 
+  const partnerName = (body.partner_name as string | undefined)?.trim() || null;
+
   const rows = await sql`
-    INSERT INTO guests (name, email)
-    VALUES (${name.trim()}, ${email.trim().toLowerCase()})
+    INSERT INTO guests (name, email, partner_name)
+    VALUES (${name.trim()}, ${email.trim().toLowerCase()}, ${partnerName})
     ON CONFLICT (email) DO NOTHING
     RETURNING *
   `;

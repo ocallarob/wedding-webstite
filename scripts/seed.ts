@@ -3,7 +3,7 @@ import { neon } from '@neondatabase/serverless';
 const sql = neon(process.env.DATABASE_URL!);
 
 const guests = [
-  { name: 'Rob Cunningham', email: 'roboc.dev@proton.me' },
+  { name: 'Rob O\'Callaghan', email: 'roboc.dev@proton.me' },
   { name: 'Test Guest Two', email: 'test2@example.com' },
   { name: 'Test Guest Three', email: 'test3@example.com' },
 ];
