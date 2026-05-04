@@ -3,6 +3,7 @@ import { Resend } from 'resend';
 import { sql } from '../../../src/lib/db';
 import { ADMIN_COOKIE_NAME, hasAdminAuth, isSameOriginRequest } from '../../../src/lib/adminAuth';
 import { createAdminSessionToken, SESSION_TTL_SECONDS } from '../../../src/lib/adminSession';
+import { verifyCsrfToken } from '../../../src/lib/csrf';
 
 export const dynamic = 'force-dynamic';
 const REMINDER_BATCH_LIMIT = 100;
@@ -93,8 +94,14 @@ export async function POST(request: NextRequest) {
   const formData = await request.formData();
   const action = formData.get('action');
   const adminSecret = process.env.ADMIN_SECRET;
+  const sessionToken = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
+  const csrfToken = String(formData.get('csrf_token') ?? '');
+  const csrfValid = !!adminSecret && verifyCsrfToken(csrfToken, sessionToken, adminSecret);
 
   if (action === 'logout') {
+    if (!hasAdminAuth(request) || !csrfValid) {
+      return NextResponse.redirect(new URL('/dashboard?error=unauthorized', request.url));
+    }
     const response = NextResponse.redirect(new URL('/dashboard', request.url));
     response.cookies.delete({ name: ADMIN_COOKIE_NAME, path: '/' });
     return response;
@@ -107,6 +114,7 @@ export async function POST(request: NextRequest) {
   if (action === 'send_reminders') {
     if (!hasAdminAuth(request)) return NextResponse.redirect(new URL('/dashboard?error=unauthorized', request.url));
     if (!isSameOriginRequest(request)) return NextResponse.redirect(new URL('/dashboard?error=unauthorized', request.url));
+    if (!csrfValid) return NextResponse.redirect(new URL('/dashboard?error=unauthorized', request.url));
 
     const resend = new Resend(process.env.RESEND_API_KEY);
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://alannah-rob.ie';
