@@ -12,13 +12,17 @@ export async function POST(request: Request) {
 
   const resend = new Resend(process.env.RESEND_API_KEY);
 
-  const guests = await sql`
+  const allUninvited = await sql`
     SELECT id, name, partner_name, email, token FROM guests WHERE invited_at IS NULL
   `;
 
-  if (guests.length === 0) {
+  if (allUninvited.length === 0) {
     return NextResponse.json({ sent: 0, message: 'No uninvited guests' });
   }
+
+  const BATCH_LIMIT = 100;
+  const guests = allUninvited.slice(0, BATCH_LIMIT);
+  const remaining = allUninvited.length - guests.length;
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://alannah-rob.ie';
 
@@ -43,7 +47,11 @@ export async function POST(request: Request) {
   const sent = results.filter((r) => r.status === 'fulfilled').length;
   const failed = results.filter((r) => r.status === 'rejected').length;
 
-  return NextResponse.json({ sent, failed });
+  return NextResponse.json({
+    sent,
+    failed,
+    ...(remaining > 0 && { remaining, note: `Run again tomorrow to send the next ${remaining} invites` }),
+  });
 }
 
 function buildEmailHtml(displayName: string, rsvpUrl: string): string {

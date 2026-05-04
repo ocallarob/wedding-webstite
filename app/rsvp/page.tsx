@@ -20,8 +20,15 @@ export default async function RsvpPage({ searchParams }: Props) {
     return <InvalidLink />;
   }
 
-  const rsvps = await sql`SELECT token FROM rsvps WHERE token = ${token}`;
+  const rsvps = await sql`
+    SELECT attending_day1, attending_day2, partner_attending_day1, partner_attending_day2
+    FROM rsvps WHERE token = ${token}
+  `;
   const alreadyRsvpd = rsvps.length > 0;
+  const wasAttending = alreadyRsvpd
+    ? !!(rsvps[0].attending_day1 || rsvps[0].attending_day2 ||
+         rsvps[0].partner_attending_day1 || rsvps[0].partner_attending_day2)
+    : false;
   const guestName = rows[0].name as string;
   const partnerName = (rows[0].partner_name as string | null) ?? null;
 
@@ -33,7 +40,7 @@ export default async function RsvpPage({ searchParams }: Props) {
         <p className="text-sm text-muted">{site.rsvpDeadline}</p>
       </header>
 
-      <RsvpForm token={token} guestName={guestName} partnerName={partnerName} alreadyRsvpd={alreadyRsvpd} />
+      <RsvpForm token={token} guestName={guestName} partnerName={partnerName} alreadyRsvpd={alreadyRsvpd} wasAttending={wasAttending} />
     </div>
   );
 }

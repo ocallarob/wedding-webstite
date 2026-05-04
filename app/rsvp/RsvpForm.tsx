@@ -9,6 +9,7 @@ type Props = {
   guestName: string;
   partnerName: string | null;
   alreadyRsvpd: boolean;
+  wasAttending: boolean;
 };
 
 type FormState = {
@@ -53,7 +54,7 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
   );
 }
 
-export function RsvpForm({ token, guestName, partnerName, alreadyRsvpd }: Props) {
+export function RsvpForm({ token, guestName, partnerName, alreadyRsvpd, wasAttending }: Props) {
   const [form, setForm] = useState<FormState>(initialState);
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -67,6 +68,9 @@ export function RsvpForm({ token, guestName, partnerName, alreadyRsvpd }: Props)
   const attendanceChosen = isCouple
     ? form.day1 !== null && form.day2 !== null && form.partnerDay1 !== null && form.partnerDay2 !== null
     : form.day1 !== null && form.day2 !== null;
+
+  const anyoneAttending = !!(form.day1 || form.day2 ||
+    (isCouple && (form.partnerDay1 || form.partnerDay2)));
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -116,7 +120,7 @@ export function RsvpForm({ token, guestName, partnerName, alreadyRsvpd }: Props)
           Thank you, {displayName}
         </p>
         <p className="text-sm text-muted leading-7">
-          {submittedAttending || alreadyRsvpd
+          {submittedAttending || (alreadyRsvpd && wasAttending)
             ? "We've received your RSVP and cannot wait to celebrate with you."
             : "We're sorry you can't make it, but we appreciate you letting us know."}
         </p>
@@ -168,7 +172,7 @@ export function RsvpForm({ token, guestName, partnerName, alreadyRsvpd }: Props)
               <button
                 type="button"
                 disabled={!attendanceChosen}
-                onClick={() => setStep(2)}
+                onClick={() => setStep(anyoneAttending ? 2 : 3)}
                 className="btn btn-primary disabled:opacity-40"
               >
                 Continue
@@ -255,7 +259,7 @@ export function RsvpForm({ token, guestName, partnerName, alreadyRsvpd }: Props)
             </label>
 
             <div className="flex items-center justify-between pt-2">
-              <button type="button" onClick={() => setStep(2)} className="text-xs text-muted hover:text-charcoal underline-offset-4 hover:underline transition-colors">
+              <button type="button" onClick={() => setStep(anyoneAttending ? 2 : 1)} className="text-xs text-muted hover:text-charcoal underline-offset-4 hover:underline transition-colors">
                 Back
               </button>
               <div className="flex items-center gap-4">

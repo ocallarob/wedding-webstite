@@ -1,6 +1,7 @@
 import { sql } from '../../src/lib/db';
 import { site } from '../../src/content/site';
 import { ExpandableCell } from './ExpandableCell';
+import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,15 +60,38 @@ function attendingMark(val: boolean | null, submitted: boolean) {
 }
 
 type Props = {
-  searchParams: Promise<{ secret?: string }>;
+  searchParams: Promise<{ error?: string }>;
 };
 
 export default async function DashboardPage({ searchParams }: Props) {
-  const { secret } = await searchParams;
-  if (!secret || secret !== process.env.ADMIN_SECRET) {
+  const { error } = await searchParams;
+  const cookieStore = await cookies();
+  const adminSession = cookieStore.get('admin_session')?.value;
+  const isAuthorized = adminSession === process.env.ADMIN_SECRET;
+
+  if (!isAuthorized) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-muted">
-        Access denied.
+      <div className="mx-auto flex min-h-screen w-full max-w-md items-center px-5">
+        <form action="/api/dashboard" method="POST" className="w-full rounded-2xl border border-stone bg-white/90 p-6 space-y-4">
+          <div className="space-y-1 text-center">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted">Dashboard</p>
+            <h1 className="font-heading text-2xl font-light text-charcoal">Admin access</h1>
+          </div>
+          <input type="hidden" name="next" value="/dashboard" />
+          <label className="block space-y-1.5 text-sm">
+            <span className="label-serif">Password</span>
+            <input
+              type="password"
+              name="password"
+              required
+              className="w-full rounded-xl border border-stone bg-white px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-charcoal/40 focus:ring-offset-2 focus:ring-offset-ivory"
+            />
+          </label>
+          {error === 'invalid_password' && (
+            <p className="text-xs text-red-700">Password incorrect. Try again.</p>
+          )}
+          <button type="submit" className="btn btn-primary w-full">Open dashboard</button>
+        </form>
       </div>
     );
   }
@@ -94,6 +118,12 @@ export default async function DashboardPage({ searchParams }: Props) {
       <header className="space-y-2 text-center">
         <p className="text-xs uppercase tracking-[0.2em] text-muted">Dashboard</p>
         <h1 className="font-heading text-4xl font-semibold text-charcoal">{site.coupleNames}</h1>
+        <form action="/api/dashboard" method="POST" className="pt-1">
+          <input type="hidden" name="action" value="logout" />
+          <button type="submit" className="text-xs text-muted underline-offset-4 hover:underline hover:text-charcoal transition-colors">
+            Log out
+          </button>
+        </form>
       </header>
 
       {/* Stats */}
@@ -156,7 +186,7 @@ export default async function DashboardPage({ searchParams }: Props) {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-muted">No guests yet.</td>
+                <td colSpan={9} className="px-4 py-10 text-center text-muted">No guests yet.</td>
               </tr>
             )}
           </tbody>
