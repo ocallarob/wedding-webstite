@@ -52,6 +52,20 @@ async function migrate() {
     )
   `;
 
+  await sql`
+    CREATE TABLE IF NOT EXISTS api_rate_limits (
+      key                   TEXT NOT NULL,
+      window_start          TIMESTAMPTZ NOT NULL,
+      count                 INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (key, window_start)
+    )
+  `;
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS api_rate_limits_window_start_idx
+    ON api_rate_limits (window_start)
+  `;
+
   console.log('Migration complete');
 }
 

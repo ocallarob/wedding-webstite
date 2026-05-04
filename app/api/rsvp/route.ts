@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '../../../src/lib/db';
-import { checkRateLimit } from '../../../src/lib/rateLimit';
+import { allowRsvpGet, allowRsvpPost } from '../../../src/lib/rsvpRateLimit';
+import { validateRsvpPayload } from '../../../src/lib/rsvpValidation';
 
 export const dynamic = 'force-dynamic';
 
 type DietaryValue = { options: string[]; other: string };
-type RsvpMemberInput = { id: string; attending_day1: boolean; attending_day2: boolean; dietary?: unknown };
-
-const MAX_SONG_LENGTH = 160;
-const MAX_MESSAGE_LENGTH = 2000;
-const MAX_MEMBERS_PER_SUBMISSION = 16;
 
 function normaliseDietary(input: unknown): DietaryValue {
   if (!input || typeof input !== 'object') return { options: [], other: '' };
@@ -24,9 +20,7 @@ export async function GET(request: NextRequest) {
   if (!token) return NextResponse.json({ error: 'token required' }, { status: 400 });
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
 
-  const ipAllowed = await checkRateLimit(`rsvp:get:ip:${ip}`, { limit: 120, windowSeconds: 60 });
-  const tokenAllowed = await checkRateLimit(`rsvp:get:token:${token}`, { limit: 60, windowSeconds: 60 });
-  if (!ipAllowed || !tokenAllowed) {
+  if (!(await allowRsvpGet(ip, token))) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
   }
 
@@ -63,32 +57,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: Request) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
   const body = await request.json().catch(() => null);
-  if (!body || typeof body !== 'object') {
-    return NextResponse.json({ error: 'invalid payload' }, { status: 400 });
-  }
-  const { token, members, song, message } = body as {
-    token?: string;
-    members?: RsvpMemberInput[];
-    song?: string;
-    message?: string;
-  };
+  const parsed = validateRsvpPayload(body);
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+  const { token, members, normalisedSong, normalisedMessage } = parsed;
 
-  if (!token) return NextResponse.json({ error: 'token required' }, { status: 400 });
-  const ipAllowed = await checkRateLimit(`rsvp:post:ip:${ip}`, { limit: 30, windowSeconds: 60 });
-  const tokenAllowed = await checkRateLimit(`rsvp:post:token:${token}`, { limit: 15, windowSeconds: 60 });
-  if (!ipAllowed || !tokenAllowed) {
+  if (!(await allowRsvpPost(ip, token))) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
-  }
-  if (!Array.isArray(members) || members.length === 0 || members.length > MAX_MEMBERS_PER_SUBMISSION) {
-    return NextResponse.json({ error: 'members required' }, { status: 400 });
-  }
-  const normalisedSong = typeof song === 'string' ? song.trim() : '';
-  const normalisedMessage = typeof message === 'string' ? message.trim() : '';
-  if (normalisedSong.length > MAX_SONG_LENGTH) {
-    return NextResponse.json({ error: 'song too long' }, { status: 400 });
-  }
-  if (normalisedMessage.length > MAX_MESSAGE_LENGTH) {
-    return NextResponse.json({ error: 'message too long' }, { status: 400 });
   }
 
   const households = await sql`SELECT id FROM households WHERE invite_token = ${token}`;
