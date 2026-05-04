@@ -1,18 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { sql } from '../../../src/lib/db';
+import { ADMIN_COOKIE_NAME, hasAdminAuth, isSameOriginRequest } from '../../../src/lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
-const ADMIN_COOKIE_NAME = 'admin_session';
 const ONE_WEEK_SECONDS = 60 * 60 * 24 * 7;
 const REMINDER_BATCH_LIMIT = 100;
-
-function isAuthorized(request: NextRequest) {
-  if (!process.env.ADMIN_SECRET) return false;
-  const secret = request.headers.get('x-admin-secret');
-  const cookieSecret = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
-  return secret === process.env.ADMIN_SECRET || cookieSecret === process.env.ADMIN_SECRET;
-}
 
 function buildReminderEmailHtml(displayName: string, rsvpUrl: string): string {
   return `<!DOCTYPE html>
@@ -63,7 +56,7 @@ function buildReminderEmailHtml(displayName: string, rsvpUrl: string): string {
 }
 
 export async function GET(request: NextRequest) {
-  if (!isAuthorized(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!hasAdminAuth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const households = await sql`
     SELECT
@@ -103,7 +96,7 @@ export async function POST(request: NextRequest) {
 
   if (action === 'logout') {
     const response = NextResponse.redirect(new URL('/dashboard', request.url));
-    response.cookies.delete(ADMIN_COOKIE_NAME);
+    response.cookies.delete({ name: ADMIN_COOKIE_NAME, path: '/' });
     return response;
   }
 
@@ -112,7 +105,8 @@ export async function POST(request: NextRequest) {
   }
 
   if (action === 'send_reminders') {
-    if (!isAuthorized(request)) return NextResponse.redirect(new URL('/dashboard?error=unauthorized', request.url));
+    if (!hasAdminAuth(request)) return NextResponse.redirect(new URL('/dashboard?error=unauthorized', request.url));
+    if (!isSameOriginRequest(request)) return NextResponse.redirect(new URL('/dashboard?error=unauthorized', request.url));
 
     const resend = new Resend(process.env.RESEND_API_KEY);
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://alannah-rob.ie';

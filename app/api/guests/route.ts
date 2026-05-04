@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '../../../src/lib/db';
+import { hasAdminAuth, isSameOriginRequest } from '../../../src/lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
 
-function isAuthorized(request: NextRequest) {
-  const secret = request.headers.get('x-admin-secret');
-  return secret && secret === process.env.ADMIN_SECRET;
-}
-
 export async function GET(request: NextRequest) {
-  if (!isAuthorized(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!hasAdminAuth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const rows = await sql`
     SELECT h.id, h.label, h.contact_email,
@@ -25,7 +21,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!isAuthorized(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!hasAdminAuth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!isSameOriginRequest(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await request.json();
   const contactEmail = String(body.contact_email ?? '').trim().toLowerCase();
