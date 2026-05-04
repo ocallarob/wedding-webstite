@@ -3,56 +3,53 @@ import { neon } from '@neondatabase/serverless';
 const sql = neon(process.env.DATABASE_URL!);
 
 async function migrate() {
+  // Full cutover: legacy model is no longer used.
+  await sql`DROP TABLE IF EXISTS rsvps`;
+  await sql`DROP TABLE IF EXISTS guests`;
+
   await sql`
-    CREATE TABLE IF NOT EXISTS guests (
-      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      name        TEXT NOT NULL,
-      email       TEXT NOT NULL UNIQUE,
-      token       UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
-      invited_at  TIMESTAMPTZ
+    CREATE TABLE IF NOT EXISTS households (
+      id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      invite_token           UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
+      contact_email          TEXT NOT NULL UNIQUE,
+      label                  TEXT,
+      invited_at             TIMESTAMPTZ,
+      invite_failed_count    INTEGER NOT NULL DEFAULT 0,
+      last_invite_failed_at  TIMESTAMPTZ,
+      reminder_count         INTEGER NOT NULL DEFAULT 0,
+      reminder_failed_count  INTEGER NOT NULL DEFAULT 0,
+      last_reminder_at       TIMESTAMPTZ,
+      last_reminder_failed_at TIMESTAMPTZ,
+      created_at             TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `;
 
   await sql`
-    ALTER TABLE guests
-    ADD COLUMN IF NOT EXISTS partner_name TEXT
+    CREATE TABLE IF NOT EXISTS household_members (
+      id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      household_id         UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+      full_name            TEXT NOT NULL,
+      member_type          TEXT NOT NULL DEFAULT 'adult',
+      attending_day1       BOOLEAN,
+      attending_day2       BOOLEAN,
+      dietary              JSONB,
+      sort_order           INTEGER NOT NULL DEFAULT 0,
+      created_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
   `;
 
   await sql`
-    CREATE TABLE IF NOT EXISTS rsvps (
-      token                 UUID PRIMARY KEY REFERENCES guests(token),
-      attending_day1        BOOLEAN NOT NULL DEFAULT false,
-      attending_day2        BOOLEAN NOT NULL DEFAULT false,
-      dietary               TEXT,
+    CREATE INDEX IF NOT EXISTS household_members_household_idx
+    ON household_members (household_id, sort_order, created_at)
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS household_rsvps (
+      household_id          UUID PRIMARY KEY REFERENCES households(id) ON DELETE CASCADE,
       song                  TEXT,
       message               TEXT,
       submitted_at          TIMESTAMPTZ NOT NULL DEFAULT now()
     )
-  `;
-
-  await sql`
-    ALTER TABLE rsvps
-    ADD COLUMN IF NOT EXISTS partner_attending_day1 BOOLEAN
-  `;
-
-  await sql`
-    ALTER TABLE rsvps
-    ADD COLUMN IF NOT EXISTS partner_attending_day2 BOOLEAN
-  `;
-
-  await sql`
-    ALTER TABLE rsvps
-    ADD COLUMN IF NOT EXISTS partner_dietary JSONB
-  `;
-
-  // Migrate existing dietary text to JSONB format {options: [], other: ""}
-  await sql`
-    ALTER TABLE rsvps
-    ALTER COLUMN dietary TYPE JSONB USING
-      CASE
-        WHEN dietary IS NULL THEN NULL
-        ELSE jsonb_build_object('options', '[]'::jsonb, 'other', dietary)
-      END
   `;
 
   console.log('Migration complete');

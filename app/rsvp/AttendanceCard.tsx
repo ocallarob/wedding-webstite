@@ -3,7 +3,7 @@
 type Day = 1 | 2;
 
 const DAY_INFO: Record<Day, { date: string; label: string; detail: string }> = {
-  1: { date: 'Friday, 28 August', label: 'Ceremony & Reception', detail: 'Lough Erne Resort' },
+  1: { date: 'Friday, 28 August', label: 'Ceremony & Reception', detail: "St. Mary's Church\nLough Erne Resort" },
   2: { date: 'Saturday, 29 August', label: 'Afternoon Drinks', detail: "Charlie's Bar, Enniskillen" },
 };
 
@@ -28,7 +28,7 @@ export function AttendanceCard({ day, guestName, value, onChange }: Props) {
         <div>
           <p className="text-[11px] uppercase tracking-[0.22em] text-muted">{info.date}</p>
           <p className="font-heading text-xl font-light text-charcoal mt-0.5">{info.label}</p>
-          <p className="text-xs text-muted mt-0.5">{info.detail}</p>
+          <p className="text-xs text-muted mt-0.5 whitespace-pre-line">{info.detail}</p>
         </div>
 
         {/* Accept / decline */}

@@ -3,78 +3,87 @@ import { sql } from '../../../src/lib/db';
 
 export const dynamic = 'force-dynamic';
 
+type DietaryValue = { options: string[]; other: string };
+
+function normaliseDietary(input: unknown): DietaryValue {
+  if (!input || typeof input !== 'object') return { options: [], other: '' };
+  const source = input as { options?: unknown; other?: unknown };
+  const options = Array.isArray(source.options) ? source.options.filter((v): v is string => typeof v === 'string') : [];
+  const other = typeof source.other === 'string' ? source.other : '';
+  return { options, other };
+}
+
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get('token');
-  if (!token) {
-    return NextResponse.json({ error: 'token required' }, { status: 400 });
-  }
+  if (!token) return NextResponse.json({ error: 'token required' }, { status: 400 });
 
-  const rows = await sql`SELECT name, partner_name FROM guests WHERE token = ${token}`;
-  if (!rows[0]) {
-    return NextResponse.json({ error: 'Invalid invite link' }, { status: 404 });
-  }
+  const households = await sql`
+    SELECT id, label, contact_email FROM households WHERE invite_token = ${token}
+  `;
+  if (!households[0]) return NextResponse.json({ error: 'Invalid invite link' }, { status: 404 });
 
-  const rsvps = await sql`SELECT token FROM rsvps WHERE token = ${token}`;
+  const members = await sql`
+    SELECT id, full_name, member_type, attending_day1, attending_day2, dietary, sort_order
+    FROM household_members
+    WHERE household_id = ${households[0].id}
+    ORDER BY sort_order, created_at
+  `;
+
+  const rsvp = await sql`SELECT submitted_at FROM household_rsvps WHERE household_id = ${households[0].id}`;
+
   return NextResponse.json({
-    name: rows[0].name,
-    partner_name: rows[0].partner_name ?? null,
-    already_rsvpd: rsvps.length > 0,
+    household_id: households[0].id,
+    label: households[0].label,
+    contact_email: households[0].contact_email,
+    already_rsvpd: rsvp.length > 0,
+    members: members.map((m) => ({
+      id: m.id,
+      full_name: m.full_name,
+      member_type: m.member_type,
+      attending_day1: m.attending_day1,
+      attending_day2: m.attending_day2,
+      dietary: normaliseDietary(m.dietary),
+    })),
   });
 }
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const {
-    token,
-    attending_day1,
-    attending_day2,
-    partner_attending_day1,
-    partner_attending_day2,
-    dietary,
-    partner_dietary,
-    song,
-    message,
-  } = body;
+  const { token, members, song, message } = body as {
+    token?: string;
+    members?: Array<{ id: string; attending_day1: boolean; attending_day2: boolean; dietary?: unknown }>;
+    song?: string;
+    message?: string;
+  };
 
-  if (!token) {
-    return NextResponse.json({ error: 'token required' }, { status: 400 });
+  if (!token) return NextResponse.json({ error: 'token required' }, { status: 400 });
+  if (!Array.isArray(members) || members.length === 0) {
+    return NextResponse.json({ error: 'members required' }, { status: 400 });
   }
 
-  const rows = await sql`SELECT id FROM guests WHERE token = ${token}`;
-  if (!rows[0]) {
-    return NextResponse.json({ error: 'Invalid invite link' }, { status: 404 });
-  }
+  const households = await sql`SELECT id FROM households WHERE invite_token = ${token}`;
+  if (!households[0]) return NextResponse.json({ error: 'Invalid invite link' }, { status: 404 });
+  const householdId = households[0].id as string;
 
-  const dietaryJson = dietary ? JSON.stringify(dietary) : null;
-  const partnerDietaryJson = partner_dietary ? JSON.stringify(partner_dietary) : null;
+  for (const member of members) {
+    const dietary = normaliseDietary(member.dietary);
+    await sql`
+      UPDATE household_members
+      SET
+        attending_day1 = ${!!member.attending_day1},
+        attending_day2 = ${!!member.attending_day2},
+        dietary = ${JSON.stringify(dietary)}::jsonb
+      WHERE id = ${member.id} AND household_id = ${householdId}
+    `;
+  }
 
   await sql`
-    INSERT INTO rsvps (
-      token, attending_day1, attending_day2,
-      partner_attending_day1, partner_attending_day2,
-      dietary, partner_dietary, song, message
-    )
-    VALUES (
-      ${token},
-      ${attending_day1 ?? false},
-      ${attending_day2 ?? false},
-      ${partner_attending_day1 ?? null},
-      ${partner_attending_day2 ?? null},
-      ${dietaryJson}::jsonb,
-      ${partnerDietaryJson}::jsonb,
-      ${song || null},
-      ${message || null}
-    )
-    ON CONFLICT (token) DO UPDATE SET
-      attending_day1         = EXCLUDED.attending_day1,
-      attending_day2         = EXCLUDED.attending_day2,
-      partner_attending_day1 = EXCLUDED.partner_attending_day1,
-      partner_attending_day2 = EXCLUDED.partner_attending_day2,
-      dietary                = EXCLUDED.dietary,
-      partner_dietary        = EXCLUDED.partner_dietary,
-      song                   = EXCLUDED.song,
-      message                = EXCLUDED.message,
-      submitted_at           = now()
+    INSERT INTO household_rsvps (household_id, song, message)
+    VALUES (${householdId}, ${song || null}, ${message || null})
+    ON CONFLICT (household_id) DO UPDATE SET
+      song = EXCLUDED.song,
+      message = EXCLUDED.message,
+      submitted_at = now()
   `;
 
   return NextResponse.json({ ok: true });

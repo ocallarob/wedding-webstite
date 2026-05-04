@@ -5,66 +5,78 @@ import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
-type DietaryValue = { options: string[]; other: string } | null;
-
-type Row = {
-  name: string;
-  partner_name: string | null;
-  email: string;
-  token: string;
-  invited_at: string | null;
+type Member = {
+  full_name: string;
+  member_type: string;
   attending_day1: boolean | null;
   attending_day2: boolean | null;
-  partner_attending_day1: boolean | null;
-  partner_attending_day2: boolean | null;
-  dietary: DietaryValue;
-  partner_dietary: DietaryValue;
+  dietary: unknown;
+};
+
+type Row = {
+  id: string;
+  label: string | null;
+  contact_email: string;
+  invited_at: string | null;
+  invite_failed_count: number;
+  reminder_count: number;
+  reminder_failed_count: number;
   song: string | null;
   message: string | null;
   submitted_at: string | null;
+  members: Member[];
 };
 
-function formatDietary(d: DietaryValue): string {
-  if (!d) return '—';
-  const parts = [...(d.options ?? []).map((o) => o.toUpperCase()), d.other].filter(Boolean);
-  return parts.length ? parts.join(', ') : '—';
-}
-
-function displayName(row: Row) {
-  return row.partner_name ? `${row.name} & ${row.partner_name}` : row.name;
+function householdName(row: Row): string {
+  if (row.label?.trim()) return row.label.trim();
+  if (row.members.length > 0) return row.members.map((m) => m.full_name).join(' & ');
+  return row.contact_email;
 }
 
 function status(row: Row): string {
-  if (row.submitted_at && anyAttending(row)) return 'Coming';
+  const anyAttending = row.members.some((m) => m.attending_day1 || m.attending_day2);
+  if (row.submitted_at && anyAttending) return 'Coming';
   if (row.submitted_at) return 'Not coming';
   if (row.invited_at) return 'Invited';
   return 'Not invited';
 }
 
-function anyAttending(row: Row) {
-  return row.attending_day1 || row.attending_day2 ||
-    row.partner_attending_day1 || row.partner_attending_day2;
+function sendStatus(row: Row): string {
+  if (!row.invited_at) {
+    return row.invite_failed_count > 0 ? `Invite failed (${row.invite_failed_count})` : 'Not sent';
+  }
+  if (row.submitted_at) return 'RSVP received';
+  if (row.reminder_failed_count > 0) return `Reminder failed (${row.reminder_failed_count})`;
+  if (row.reminder_count > 0) return `Reminder sent (${row.reminder_count})`;
+  return 'Invite sent';
 }
 
-function statusColour(row: Row): string {
-  if (row.submitted_at && anyAttending(row)) return 'text-sage font-semibold';
-  if (row.submitted_at) return 'text-muted';
-  if (row.invited_at) return 'text-mauve';
-  return 'text-stone';
-}
-
-function attendingMark(val: boolean | null, submitted: boolean) {
-  if (val) return '✓';
-  if (submitted) return '✗';
+function yesNoDash(value: boolean | null): string {
+  if (value === true) return 'Yes';
+  if (value === false) return 'No';
   return '—';
 }
 
+function normaliseDietary(input: unknown): { options: string[]; other: string } {
+  if (!input || typeof input !== 'object') return { options: [], other: '' };
+  const source = input as { options?: unknown; other?: unknown };
+  const options = Array.isArray(source.options) ? source.options.filter((v): v is string => typeof v === 'string') : [];
+  const other = typeof source.other === 'string' ? source.other : '';
+  return { options, other };
+}
+
+function memberSummary(member: Member): string {
+  const d = normaliseDietary(member.dietary);
+  const dietary = [...d.options.map((o) => o.toUpperCase()), d.other.trim()].filter(Boolean).join(', ') || '—';
+  return `${member.full_name} (${member.member_type}) · D1: ${yesNoDash(member.attending_day1)} · D2: ${yesNoDash(member.attending_day2)} · Dietary: ${dietary}`;
+}
+
 type Props = {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; reminder?: string; sent?: string; failed?: string }>;
 };
 
 export default async function DashboardPage({ searchParams }: Props) {
-  const { error } = await searchParams;
+  const { error, reminder, sent, failed } = await searchParams;
   const cookieStore = await cookies();
   const adminSession = cookieStore.get('admin_session')?.value;
   const isAuthorized = adminSession === process.env.ADMIN_SECRET;
@@ -80,16 +92,9 @@ export default async function DashboardPage({ searchParams }: Props) {
           <input type="hidden" name="next" value="/dashboard" />
           <label className="block space-y-1.5 text-sm">
             <span className="label-serif">Password</span>
-            <input
-              type="password"
-              name="password"
-              required
-              className="w-full rounded-xl border border-stone bg-white px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-charcoal/40 focus:ring-offset-2 focus:ring-offset-ivory"
-            />
+            <input type="password" name="password" required className="w-full rounded-xl border border-stone bg-white px-3 py-2.5" />
           </label>
-          {error === 'invalid_password' && (
-            <p className="text-xs text-red-700">Password incorrect. Try again.</p>
-          )}
+          {error === 'invalid_password' && <p className="text-xs text-red-700">Password incorrect. Try again.</p>}
           <button type="submit" className="btn btn-primary w-full">Open dashboard</button>
         </form>
       </div>
@@ -98,42 +103,73 @@ export default async function DashboardPage({ searchParams }: Props) {
 
   const rows = (await sql`
     SELECT
-      g.name, g.partner_name, g.email, g.token, g.invited_at,
-      r.attending_day1, r.attending_day2,
-      r.partner_attending_day1, r.partner_attending_day2,
-      r.dietary, r.partner_dietary, r.song, r.message, r.submitted_at
-    FROM guests g
-    LEFT JOIN rsvps r ON g.token = r.token
-    ORDER BY g.name
+      h.id,
+      h.label,
+      h.contact_email,
+      h.invited_at,
+      h.invite_failed_count,
+      h.reminder_count,
+      h.reminder_failed_count,
+      hr.song,
+      hr.message,
+      hr.submitted_at,
+      COALESCE(json_agg(json_build_object(
+        'full_name', m.full_name,
+        'member_type', m.member_type,
+        'attending_day1', m.attending_day1,
+        'attending_day2', m.attending_day2,
+        'dietary', m.dietary,
+        'sort_order', m.sort_order
+      ) ORDER BY m.sort_order, m.created_at) FILTER (WHERE m.id IS NOT NULL), '[]'::json) AS members
+    FROM households h
+    LEFT JOIN household_members m ON m.household_id = h.id
+    LEFT JOIN household_rsvps hr ON hr.household_id = h.id
+    GROUP BY h.id, hr.song, hr.message, hr.submitted_at
+    ORDER BY COALESCE(h.label, h.contact_email)
   `) as Row[];
 
-  const total        = rows.length;
-  const invited      = rows.filter((g) => g.invited_at).length;
-  const coming       = rows.filter((g) => g.submitted_at && anyAttending(g)).length;
-  const notComing    = rows.filter((g) => g.submitted_at && !anyAttending(g)).length;
-  const noResponse   = rows.filter((g) => g.invited_at && !g.submitted_at).length;
+  const totalGuests = rows.reduce((sum, r) => sum + r.members.length, 0);
+  const invitedGuests = rows.reduce((sum, r) => sum + (r.invited_at ? r.members.length : 0), 0);
+  const comingGuests = rows.reduce(
+    (sum, r) => sum + (r.submitted_at ? r.members.filter((m) => !!(m.attending_day1 || m.attending_day2)).length : 0),
+    0
+  );
+  const notComingGuests = rows.reduce(
+    (sum, r) => sum + (r.submitted_at ? r.members.filter((m) => m.attending_day1 === false && m.attending_day2 === false).length : 0),
+    0
+  );
+  const noResponseGuests = rows.reduce(
+    (sum, r) => sum + (r.invited_at && !r.submitted_at ? r.members.length : 0),
+    0
+  );
 
   return (
     <div className="mx-auto max-w-6xl px-5 pt-[72px] pb-20 space-y-10">
       <header className="space-y-2 text-center">
         <p className="text-xs uppercase tracking-[0.2em] text-muted">Dashboard</p>
         <h1 className="font-heading text-4xl font-semibold text-charcoal">{site.coupleNames}</h1>
-        <form action="/api/dashboard" method="POST" className="pt-1">
-          <input type="hidden" name="action" value="logout" />
-          <button type="submit" className="text-xs text-muted underline-offset-4 hover:underline hover:text-charcoal transition-colors">
-            Log out
-          </button>
-        </form>
+        <div className="flex items-center justify-center gap-4 pt-1">
+          <form action="/api/dashboard" method="POST">
+            <input type="hidden" name="action" value="send_reminders" />
+            <button type="submit" className="text-xs text-mauve underline-offset-4 hover:underline hover:text-charcoal transition-colors">Send reminder batch</button>
+          </form>
+          <form action="/api/dashboard" method="POST">
+            <input type="hidden" name="action" value="logout" />
+            <button type="submit" className="text-xs text-muted underline-offset-4 hover:underline hover:text-charcoal transition-colors">Log out</button>
+          </form>
+        </div>
       </header>
 
-      {/* Stats */}
+      {reminder === 'done' && <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-charcoal">Reminder batch complete: sent {sent ?? '0'}, failed {failed ?? '0'}.</p>}
+      {reminder === 'none' && <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-muted">No households currently need a reminder.</p>}
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
-          { label: 'Total invites', value: total },
-          { label: 'Invited', value: invited },
-          { label: 'Coming', value: coming },
-          { label: 'Not coming', value: notComing },
-          { label: 'No response', value: noResponse },
+          { label: 'Total guests', value: totalGuests },
+          { label: 'Invited guests', value: invitedGuests },
+          { label: 'Coming guests', value: comingGuests },
+          { label: 'Not coming', value: notComingGuests },
+          { label: 'No response', value: noResponseGuests },
         ].map((stat) => (
           <div key={stat.label} className="card p-4 text-center">
             <p className="font-heading text-3xl font-light text-charcoal">{stat.value}</p>
@@ -142,51 +178,34 @@ export default async function DashboardPage({ searchParams }: Props) {
         ))}
       </div>
 
-      {/* Guest table */}
       <div className="overflow-x-auto rounded-2xl border border-stone">
         <table className="w-full text-sm">
           <thead className="bg-stone/40 text-left">
             <tr>
-              {['Name', 'Email', 'Status', 'Day 1', 'Day 2', 'Dietary', 'Partner Dietary', 'Song', 'Message'].map((h) => (
-                <th key={h} className="px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-muted font-normal whitespace-nowrap">
-                  {h}
-                </th>
+              {['Household', 'Contact Email', 'Status', 'Send Status', 'Members', 'Song', 'Message'].map((h) => (
+                <th key={h} className="px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-muted font-normal whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-stone/60">
             {rows.map((row) => (
-              <tr key={row.token} className="bg-ivory/60 hover:bg-stone/20 transition-colors">
-                <td className="px-4 py-3 font-medium text-charcoal whitespace-nowrap">{displayName(row)}</td>
-                <td className="px-4 py-3 text-muted">{row.email}</td>
-                <td className={`px-4 py-3 whitespace-nowrap ${statusColour(row)}`}>{status(row)}</td>
-                <td className="px-4 py-3 text-center text-xs">
-                  {row.partner_name ? (
-                    <span className="flex flex-col gap-0.5">
-                      <span>{attendingMark(row.attending_day1, !!row.submitted_at)}</span>
-                      <span>{attendingMark(row.partner_attending_day1, !!row.submitted_at)}</span>
-                    </span>
-                  ) : attendingMark(row.attending_day1, !!row.submitted_at)}
+              <tr key={row.id} className="bg-ivory/60 hover:bg-stone/20 transition-colors align-top">
+                <td className="px-4 py-3 font-medium text-charcoal whitespace-nowrap">{householdName(row)}</td>
+                <td className="px-4 py-3 text-muted">{row.contact_email}</td>
+                <td className="px-4 py-3 text-muted whitespace-nowrap">{status(row)}</td>
+                <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">{sendStatus(row)}</td>
+                <td className="px-4 py-3 text-xs text-muted min-w-[340px]">
+                  <div className="space-y-1">
+                    {row.members.map((m, idx) => <p key={`${row.id}-m-${idx}`}>{memberSummary(m)}</p>)}
+                  </div>
                 </td>
-                <td className="px-4 py-3 text-center text-xs">
-                  {row.partner_name ? (
-                    <span className="flex flex-col gap-0.5">
-                      <span>{attendingMark(row.attending_day2, !!row.submitted_at)}</span>
-                      <span>{attendingMark(row.partner_attending_day2, !!row.submitted_at)}</span>
-                    </span>
-                  ) : attendingMark(row.attending_day2, !!row.submitted_at)}
-                </td>
-                <td className="px-4 py-3 text-muted max-w-[160px] truncate">{formatDietary(row.dietary)}</td>
-                <td className="px-4 py-3 text-muted max-w-[160px] truncate">{row.partner_name ? formatDietary(row.partner_dietary) : '—'}</td>
                 <td className="px-4 py-3 text-muted max-w-[160px] truncate">{row.song ?? '—'}</td>
-                <td className="px-4 py-3 text-muted">
-                  {row.message ? <ExpandableCell text={row.message} /> : '—'}
-                </td>
+                <td className="px-4 py-3 text-muted">{row.message ? <ExpandableCell text={row.message} /> : '—'}</td>
               </tr>
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-muted">No guests yet.</td>
+                <td colSpan={7} className="px-4 py-10 text-center text-muted">No households yet.</td>
               </tr>
             )}
           </tbody>
