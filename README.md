@@ -1,44 +1,137 @@
-# Wedding Website (Next.js + Tailwind)
+# Wedding Invite Service (Next.js + Postgres + Resend)
 
-A minimal, mobile-first wedding site built with the Next.js App Router, TypeScript, and Tailwind. All editable content lives in `src/content/site.ts`.
+Household-based wedding invite + RSVP system.
+Supports singles, couples, and families (adults + children) with one invite token per household.
 
-## Getting started
+## Stack
+- Next.js 14 App Router
+- Vercel Postgres (Neon)
+- Resend for email delivery
+
+## Quick Start
 
 ```bash
 pnpm install
 pnpm dev
-# open http://localhost:3000
 ```
 
-Required env var for RSVP submissions (used client-side):
+Open `http://localhost:3000`.
 
+## Required Environment Variables
+
+Set these in `.env.local` (local) and Vercel (Preview/Production):
+
+```bash
+DATABASE_URL=...
+RESEND_API_KEY=...
+ADMIN_SECRET=...
+NEXT_PUBLIC_BASE_URL=https://alannah-rob.ie
 ```
-NEXT_PUBLIC_RSVP_API_BASE=<your API Gateway base URL, no trailing slash needed>
+
+Notes:
+- `ADMIN_SECRET` is used for dashboard login and admin API actions.
+- `NEXT_PUBLIC_BASE_URL` is used in email RSVP links.
+- For real recipients, keep `NEXT_PUBLIC_BASE_URL` on your branded domain (not preview/tunnel).
+
+## Database
+
+Current model (no legacy guest/partner dependency):
+- `households`
+- `household_members`
+- `household_rsvps`
+
+Run schema migration:
+
+```bash
+pnpm db:migrate
 ```
 
-## Content editing
+Seed test data:
 
-- Update names, dates, locations, gallery image paths, weekend schedule, travel info, and FAQ in `src/content/site.ts`.
-- Drop your own photos into `public/photos/` to replace the placeholders (paths already referenced in content).
+```bash
+pnpm db:seed
+```
 
-## Deployment (Vercel)
+## CSV Guest Import
 
-1. Set `NEXT_PUBLIC_RSVP_API_BASE` in your Vercel project settings.
-2. Deploy as a standard Next.js app; no custom build steps beyond `pnpm run build`.
+Template:
+- `samples/households-template.csv`
 
-## Deployment (AWS S3 + CloudFront)
+Columns:
+- `contact_email` (required)
+- `label` (optional display label)
+- `members` (required, `|` separated)
+- `member_types` (optional, `|` separated; values: `adult` or `child`)
 
-This repo includes a CDK stack that stands up static hosting behind CloudFront plus the RSVP API.
+Dry run:
 
-1. `cd infra && pnpm install && pnpm cdk synth && pnpm cdk deploy` to create the S3 bucket, CloudFront distribution (with a viewer-request redirect that forces everything to `/save-the-date`), DynamoDB table, Lambda, and API Gateway endpoint. Grab the `SiteBucketName`, `SiteDistributionDomain`, and `ApiBaseUrl` outputs.
-2. Build and export the site, then upload to the bucket (ex: `pnpm run build && pnpm exec next export -o out && aws s3 sync ./out s3://<SiteBucketName>/`). If `next export` complains about `middleware`, temporarily move `middleware.ts` aside while exporting—the CloudFront function handles the redirect in production.
-3. Set `NEXT_PUBLIC_RSVP_API_BASE` to the deployed `ApiBaseUrl` (or a custom domain that fronts it).
-4. Invalidate CloudFront after uploading when you push changes: `aws cloudfront create-invalidation --distribution-id <id> --paths \"/*\"`.
+```bash
+pnpm db:import-households samples/households-template.csv
+```
 
-## Pages
+Apply import:
 
-- `/` – hero, quick info, CTAs to weekend/travel/RSVP.
-- `/gallery` – photo grid with modal.
-- `/weekend` – Day 0/1/2 schedule.
-- `/travel` – area guide, accommodations, getting-there tips, FAQ, copy-to-clipboard map link.
-- `/rsvp` – form posting to `${NEXT_PUBLIC_RSVP_API_BASE}/rsvp` with loading/success/error states and a honeypot field.
+```bash
+pnpm db:import-households samples/households-template.csv --apply
+```
+
+Behavior:
+- Upsert household by `contact_email`
+- Replace member rows for imported households
+
+## Core Routes
+
+- `/rsvp?token=...`  
+  Family-capable 3-step RSVP wizard:
+  1. attendance per member (Day 1 + Day 2)
+  2. dietary per member
+  3. song/message
+
+- `/dashboard`  
+  Admin dashboard with:
+  - guest-level summary counts
+  - household table
+  - send status
+  - one-click reminder batch
+
+Admin APIs:
+- `POST /api/invites/send` (send new invites)
+- `POST /api/dashboard` with `action=send_reminders` (reminders)
+- `GET /api/dashboard` (`x-admin-secret` header auth)
+
+## Email + Deliverability Notes
+
+Important:
+- From-domain and RSVP link-domain should align where possible.
+- Sending `@alannah-rob.ie` emails linking to random tunnel/preview domains can hit spam.
+
+Recommended:
+- SPF + DKIM passing
+- DMARC configured (start with `p=none`)
+- Send small batches first (10–20), then full send
+
+## Preview Gotchas
+
+If `/dashboard` access fails on preview:
+1. Ensure preview auth/protection is satisfied.
+2. Ensure preview env vars are set (`ADMIN_SECRET`, `DATABASE_URL`, etc.).
+3. Ensure migration ran against the same preview `DATABASE_URL`.
+
+Common error:
+- `relation "households" does not exist` means migration was not run on that DB.
+
+## Typical Go-Live Sequence
+
+1. Confirm production env vars.
+2. Run production migration (`pnpm db:migrate` against prod DB).
+3. Import real households via CSV (dry-run, then apply).
+4. Send one production smoke-test invite to yourself.
+5. Verify RSVP submit + revisit/update + dashboard sync.
+6. Send pilot batch.
+7. Send full batch.
+
+## Public Repo Safety Notes
+
+- Never commit real secret values (`DATABASE_URL`, `RESEND_API_KEY`, `ADMIN_SECRET`).
+- Avoid committing real guest data exports.
+- Treat preview links and invite tokens as sensitive operational data.
