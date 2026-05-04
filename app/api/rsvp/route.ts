@@ -43,6 +43,8 @@ export async function GET(request: NextRequest) {
     label: households[0].label,
     contact_email: households[0].contact_email,
     already_rsvpd: rsvp.length > 0,
+    song: (rsvp[0]?.song as string | null) ?? '',
+    message: (rsvp[0]?.message as string | null) ?? '',
     members: members.map((m) => ({
       id: m.id,
       full_name: m.full_name,
