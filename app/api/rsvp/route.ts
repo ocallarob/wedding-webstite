@@ -36,7 +36,11 @@ export async function GET(request: NextRequest) {
     ORDER BY sort_order, created_at
   `;
 
-  const rsvp = await sql`SELECT submitted_at FROM household_rsvps WHERE household_id = ${households[0].id}`;
+  const rsvp = await sql`
+    SELECT submitted_at, song, message
+    FROM household_rsvps
+    WHERE household_id = ${households[0].id}
+  `;
 
   return NextResponse.json({
     household_id: households[0].id,
