@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Monogram } from './Monogram';
 import { SiteHeader } from './SiteHeader';
@@ -27,6 +28,13 @@ export function SiteFrame({ coupleNames, dateText, locationText, children }: Pro
               {coupleNames}
             </div>
             <div className="text-xs uppercase tracking-[0.25em]">{dateText} • {locationText}</div>
+            <Image
+              src="/assets/heart.svg"
+              alt="Heart motif"
+              width={54}
+              height={54}
+              className="mt-2 h-auto w-8 opacity-85"
+            />
           </div>
         </footer>
       )}

@@ -37,8 +37,16 @@ export default function HomePage() {
     <div className="relative overflow-hidden bg-ivory">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(219,184,184,0.22),transparent_50%),radial-gradient(circle_at_85%_20%,rgba(143,168,136,0.15),transparent_35%)]" />
       <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-16 px-5 pb-20 pt-10 sm:pt-14">
-        <section className="space-y-8 rounded-3xl border border-stone/80 bg-ivory/80 px-6 py-10 text-center shadow-[0_24px_80px_rgba(58,53,48,0.08)] backdrop-blur-sm sm:px-10">
-          <Monogram size={58} />
+        <section className="relative space-y-8 rounded-3xl border border-stone/80 bg-ivory/80 px-6 pb-10 pt-24 text-center shadow-[0_24px_80px_rgba(58,53,48,0.08)] backdrop-blur-sm sm:px-10 sm:pt-10">
+          <Image
+            src="/assets/devenish-tower.svg"
+            alt=""
+            aria-hidden
+            width={170}
+            height={120}
+            className="pointer-events-none absolute left-1/2 top-7 h-auto w-20 -translate-x-1/2 opacity-70 md:left-auto md:right-[9%] md:top-8 md:w-[120px] md:translate-x-0"
+          />
+          <Monogram size={58} className="mx-auto md:mx-0" />
           <div className="space-y-4">
             <p className="text-xs uppercase tracking-[0.3em] text-mauve">28 August 2026 ◇ Lough Erne Resort</p>
             <h1 className="font-heading text-5xl font-light leading-tight tracking-[0.1em] text-mauve sm:text-6xl">
@@ -47,7 +55,7 @@ export default function HomePage() {
             <IrishPhrase
               phrase="fáilte romhaibh"
               translation="Welcome"
-              className="text-[2.7rem] tracking-[0.01em]"
+              className="text-[1.8rem] tracking-[0.01em] sm:text-[2.2rem]"
             />
           </div>
           <div id="header-sentinel" className="h-px w-full" />
@@ -110,7 +118,7 @@ export default function HomePage() {
             <IrishPhrase
               phrase="le chéile"
               translation="Together"
-              className="text-[2.5rem]"
+              className="text-[1.75rem] sm:text-[2rem]"
             />
             <WaveDivider />
           </div>
@@ -119,8 +127,16 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="space-y-6">
-          <div className="space-y-2 text-center">
+        <section className="relative space-y-6">
+          <Image
+            src="/assets/menlo-castle.svg"
+            alt=""
+            aria-hidden
+            width={170}
+            height={120}
+            className="pointer-events-none absolute left-1/2 top-0 h-auto w-24 -translate-x-1/2 opacity-70 md:left-5 md:top-[-0.75rem] md:w-[120px] md:translate-x-0"
+          />
+          <div className="space-y-2 pt-20 text-center md:pt-0">
             <SectionMonogramMark />
             <span className="group relative inline-grid place-items-center">
               <h2 className="font-heading text-4xl font-light tracking-[0.04em] text-mauve opacity-100 transition-opacity duration-150 group-hover:opacity-0 group-focus-within:opacity-0" style={{ gridArea: '1 / 1' }}>
@@ -172,6 +188,17 @@ export default function HomePage() {
             ))}
           </div>
         </section>
+
+        <div className="flex justify-center pb-2">
+          <Image
+            src="/assets/heart.svg"
+            alt=""
+            aria-hidden
+            width={88}
+            height={88}
+            className="h-auto w-12 opacity-85"
+          />
+        </div>
       </div>
     </div>
   );
