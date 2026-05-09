@@ -41,10 +41,14 @@ export default function HomePage() {
           <Monogram size={58} />
           <div className="space-y-4">
             <p className="text-xs uppercase tracking-[0.3em] text-mauve">28 August 2026 ◇ Lough Erne Resort</p>
-            <h1 className="font-heading text-5xl font-light leading-tight tracking-[0.1em] text-charcoal sm:text-6xl">
+            <h1 className="font-heading text-5xl font-light leading-tight tracking-[0.1em] text-mauve sm:text-6xl">
               {site.coupleNames}
             </h1>
-            <p className="font-heading text-2xl font-light italic tracking-[0.03em] text-mauve">Le grá agus le háthas</p>
+            <IrishPhrase
+              phrase="fáilte romhaibh"
+              translation="Welcome"
+              className="text-[2.7rem] tracking-[0.01em]"
+            />
           </div>
           <div id="header-sentinel" className="h-px w-full" />
           <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-stretch">
@@ -95,12 +99,20 @@ export default function HomePage() {
         <section className="grid gap-8 rounded-3xl border border-stone bg-stone/40 px-6 py-10 sm:px-10 md:grid-cols-2">
           <div className="space-y-4">
             <p className="text-xs uppercase tracking-[0.27em] text-mauve">Our Story</p>
-            <h2 className="font-heading text-4xl font-light tracking-[0.05em] text-charcoal">Galway to Fermanagh</h2>
+            <h2 className="font-heading text-4xl font-light tracking-[0.04em] text-mauve">
+              <span className="font-script mr-2 text-[0.95em] text-blush" style={{ fontFamily: 'var(--font-script), cursive' }}>from</span>
+              Galway to Fermanagh
+            </h2>
             <p className="text-base leading-8 text-muted">
               We met in Galway on 14 August 2020, got engaged on Dog&apos;s Bay in Connemara in 2024, and now we
               cannot wait to celebrate with you in one of our favourite places on the island.
             </p>
-            <p className="font-heading text-2xl font-light italic text-blush">Fáilte romhaibh</p>
+            <IrishPhrase
+              phrase="le chéile"
+              translation="Together"
+              className="text-[2.5rem]"
+            />
+            <WaveDivider />
           </div>
           <div className="rounded-2xl border border-gold/70 bg-ivory/90 p-6">
             <DogBaySketch />
@@ -110,35 +122,53 @@ export default function HomePage() {
         <section className="space-y-6">
           <div className="space-y-2 text-center">
             <SectionMonogramMark />
-            <h2 className="font-heading text-4xl font-light tracking-[0.05em] text-charcoal">Our Wedding Weekend</h2>
+            <span className="group relative inline-grid place-items-center">
+              <h2 className="font-heading text-4xl font-light tracking-[0.04em] text-mauve opacity-100 transition-opacity duration-150 group-hover:opacity-0 group-focus-within:opacity-0" style={{ gridArea: '1 / 1' }}>
+                <span className="font-script mr-2 text-[0.95em] text-blush" style={{ fontFamily: 'var(--font-script), cursive' }}>ár</span>
+                Clár na Bainise
+              </h2>
+              <h2
+                tabIndex={0}
+                className="font-heading text-4xl font-light tracking-[0.04em] text-mauve opacity-0 outline-none transition-opacity duration-150 group-hover:opacity-100 group-focus:opacity-100"
+                style={{ gridArea: '1 / 1' }}
+              >
+                <span className="font-script mr-2 text-[0.95em] text-blush" style={{ fontFamily: 'var(--font-script), cursive' }}>Our</span>
+                wedding schedule
+              </h2>
+            </span>
           </div>
           <div className="grid gap-5 md:grid-cols-3">
             {weekendSchedule.slice(0, 3).map((day) => (
-              <div key={day.title} className="rounded-2xl border border-stone bg-ivory/80 p-5">
-                <p className="text-[11px] uppercase tracking-[0.24em] text-mauve">{day.date}</p>
-                <h3 className="mt-2 font-heading text-2xl font-light text-charcoal">{day.title}</h3>
-                <div className="mt-4 space-y-3">
-                  {day.events.slice(0, 2).map((event) => (
-                    <div key={event.title}>
-                      <p className="font-heading text-xl font-light text-mauve">{event.time}</p>
-                      <p className="text-sm leading-6 text-charcoal">{event.title}</p>
-                      {event.locationUrl ? (
-                        <a
-                          href={event.locationUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-xs uppercase tracking-[0.2em] text-muted decoration-mauve/30 underline-offset-4 hover:text-mauve hover:underline"
-                        >
-                          {event.location}
-                          <span aria-hidden className="text-[10px] leading-none align-[0.08em]">↗︎</span>
-                        </a>
-                      ) : (
-                        <p className="text-xs uppercase tracking-[0.2em] text-muted">{event.location}</p>
-                      )}
+              (() => {
+                const panelUrl = day.events.find((event) => event.locationUrl)?.locationUrl;
+                const PanelTag = panelUrl ? 'a' : 'div';
+                const panelProps = panelUrl
+                  ? { href: panelUrl, target: '_blank', rel: 'noreferrer' }
+                  : {};
+
+                return (
+                  <PanelTag
+                    key={day.title}
+                    {...panelProps}
+                    className={`rounded-2xl border border-stone bg-ivory/80 p-5 ${panelUrl ? 'block transition hover:border-mauve/60 hover:shadow-[0_12px_26px_rgba(58,53,48,0.08)]' : ''}`}
+                  >
+                    <p className="text-[11px] uppercase tracking-[0.24em] text-mauve">{day.date}</p>
+                    <h3 className="mt-2 font-heading text-2xl font-light text-charcoal">{day.title}</h3>
+                    <div className="mt-4 space-y-3">
+                      {day.events.slice(0, 2).map((event) => (
+                        <div key={event.title}>
+                          <p className="font-heading text-xl font-light text-mauve">{event.time}</p>
+                          <p className="text-sm leading-6 text-charcoal">{event.title}</p>
+                          <p className="text-xs uppercase tracking-[0.2em] text-muted">
+                            {event.location}
+                            {panelUrl ? <span aria-hidden className="ml-1 text-[10px] leading-none align-[0.08em]">↗︎</span> : null}
+                          </p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </PanelTag>
+                );
+              })()
             ))}
           </div>
         </section>
@@ -150,18 +180,13 @@ export default function HomePage() {
 function WaveDivider() {
   return (
     <div aria-hidden className="py-2">
-      <svg viewBox="0 0 240 22" className="h-5 w-full text-gold" fill="none">
-        <path
-          d="M2 7C22 7 22 15 42 15C62 15 62 7 82 7C102 7 102 15 122 15C142 15 142 7 162 7C182 7 182 15 202 15C222 15 222 7 238 7"
-          stroke="currentColor"
-          strokeWidth="1.4"
-        />
-        <path
-          d="M2 12C22 12 22 20 42 20C62 20 62 12 82 12C102 12 102 20 122 20C142 20 142 12 162 12C182 12 182 20 202 20C222 20 222 12 238 12"
-          stroke="currentColor"
-          strokeWidth="1.4"
-        />
-      </svg>
+      <Image
+        src="/assets/divider-line.svg"
+        alt=""
+        width={900}
+        height={60}
+        className="h-auto w-full"
+      />
     </div>
   );
 }
@@ -188,5 +213,25 @@ function DogBaySketch() {
         sizes="(min-width: 768px) 40vw, 100vw"
       />
     </div>
+  );
+}
+
+function IrishPhrase({ phrase, translation, className }: { phrase: string; translation: string; className?: string }) {
+  return (
+    <span className="group relative inline-grid place-items-center">
+      <span
+        tabIndex={0}
+        className={`font-script leading-none text-blush opacity-100 outline-none transition-opacity duration-150 group-hover:opacity-0 group-focus:opacity-0 ${className ?? ''}`}
+        style={{ fontFamily: 'var(--font-script), cursive', gridArea: '1 / 1' }}
+      >
+        {phrase}
+      </span>
+      <span
+        className={`pointer-events-none font-script leading-none text-blush opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 ${className ?? ''}`}
+        style={{ fontFamily: 'var(--font-script), cursive', gridArea: '1 / 1' }}
+      >
+        {translation}
+      </span>
+    </span>
   );
 }

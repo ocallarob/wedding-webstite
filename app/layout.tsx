@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Cormorant_Garamond, Jost } from 'next/font/google';
+import { Charmonman, Cormorant_Garamond, Jost } from 'next/font/google';
 import './globals.css';
 import { site } from '../src/content/site';
 import { SiteFrame } from '../src/components/SiteFrame';
@@ -15,6 +15,13 @@ const body = Jost({
   subsets: ['latin'],
   weight: ['300', '400', '500'],
   variable: '--font-body',
+  display: 'swap',
+});
+
+const script = Charmonman({
+  subsets: ['latin', 'latin-ext'],
+  weight: ['400', '700'],
+  variable: '--font-script',
   display: 'swap',
 });
 
@@ -88,7 +95,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${heading.variable} ${body.variable}`}>
+    <html lang="en" className={`${heading.variable} ${body.variable} ${script.variable}`}>
       <body className="font-body">
         <SiteFrame coupleNames={site.coupleNames} dateText={site.dateText} locationText={site.locationText}>
           {children}
