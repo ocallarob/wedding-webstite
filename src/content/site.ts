@@ -2,6 +2,7 @@ export const site = {
   coupleNames: 'Rob & Alannah',
   dateText: 'Friday, August 28 2026',
   date: '28/08/2026',
+  countdownDateTime: '2026-08-28T13:00:00+01:00',
   day2Date: '29/08/2026',
   day2DateText: 'Saturday, August 29 2026',
   locationHotel: 'The Lough Erne Resort',
