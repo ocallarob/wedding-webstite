@@ -78,7 +78,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="font-heading italic text-xl leading-none tracking-[0.18em] text-muted">
-          <DateEasterEgg defaultText={site.date} targetDate={site.date} className="inline" />
+          <DateEasterEgg defaultText={site.date} targetDate={site.countdownDateTime} className="inline" />
         </div>
       </div>
     </header>

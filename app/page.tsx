@@ -52,7 +52,7 @@ export default function HomePage() {
             <p className="text-xs uppercase text-mauve sm:tracking-[0.3em]">
               <DateEasterEgg
                 defaultText="28 August 2026"
-                targetDate={site.date}
+                targetDate={site.countdownDateTime}
                 className="block tracking-[0.22em] sm:inline sm:tracking-[0.3em]"
               />
               <span className="block py-1 tracking-[0.12em] sm:inline sm:px-2 sm:py-0 sm:tracking-[0.3em]">◇</span>
@@ -106,7 +106,7 @@ export default function HomePage() {
                     ) : item.label === 'Date' ? (
                       <DateEasterEgg
                         defaultText={item.value}
-                        targetDate={site.date}
+                        targetDate={site.countdownDateTime}
                         className="mt-2 text-sm leading-6 text-charcoal"
                       />
                     ) : (

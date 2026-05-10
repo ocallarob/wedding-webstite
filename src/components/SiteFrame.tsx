@@ -30,7 +30,7 @@ export function SiteFrame({ coupleNames, dateText, locationText, children }: Pro
               {coupleNames}
             </div>
             <div className="text-xs uppercase tracking-[0.25em]">
-              <DateEasterEgg defaultText={dateText} targetDate={site.date} className="inline" /> • {locationText}
+              <DateEasterEgg defaultText={dateText} targetDate={site.countdownDateTime} className="inline" /> • {locationText}
             </div>
             <Image
               src="/assets/heart.svg"
