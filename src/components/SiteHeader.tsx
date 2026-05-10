@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { DateEasterEgg } from './DateEasterEgg';
 import { Monogram } from '../components/Monogram';
 import { site } from '../content/site';
 
@@ -77,7 +78,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="font-heading italic text-xl leading-none tracking-[0.18em] text-muted">
-          {site.date}
+          <DateEasterEgg defaultText={site.date} targetDate={site.date} className="inline" />
         </div>
       </div>
     </header>

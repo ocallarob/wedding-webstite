@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import { site } from '../src/content/site';
 import { Monogram } from '../src/components/Monogram';
+import { DateEasterEgg } from '../src/components/DateEasterEgg';
 
 const quickInfo = [
   { label: 'Date', value: site.dateText },
@@ -48,7 +49,15 @@ export default function HomePage() {
           />
           <Monogram size={58} className="mx-auto md:mx-0" />
           <div className="space-y-4">
-            <p className="text-xs uppercase tracking-[0.3em] text-mauve">28 August 2026 ◇ Lough Erne Resort</p>
+            <p className="text-xs uppercase text-mauve sm:tracking-[0.3em]">
+              <DateEasterEgg
+                defaultText="28 August 2026"
+                targetDate={site.date}
+                className="block tracking-[0.22em] sm:inline sm:tracking-[0.3em]"
+              />
+              <span className="block py-1 tracking-[0.12em] sm:inline sm:px-2 sm:py-0 sm:tracking-[0.3em]">◇</span>
+              <span className="block tracking-[0.22em] sm:inline sm:tracking-[0.3em]">Lough Erne Resort</span>
+            </p>
             <h1 className="font-heading text-5xl font-light leading-tight tracking-[0.1em] text-mauve sm:text-6xl">
               {site.coupleNames}
             </h1>
@@ -94,6 +103,12 @@ export default function HomePage() {
                         {item.value}
                         <span aria-hidden className="text-[10px] leading-none align-[0.08em]">↗︎</span>
                       </a>
+                    ) : item.label === 'Date' ? (
+                      <DateEasterEgg
+                        defaultText={item.value}
+                        targetDate={site.date}
+                        className="mt-2 text-sm leading-6 text-charcoal"
+                      />
                     ) : (
                       <p className="mt-2 text-sm leading-6 text-charcoal">{item.value}</p>
                     )}
