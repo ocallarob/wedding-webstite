@@ -1,20 +1,17 @@
 import Image from 'next/image';
 
-const MONOGRAM_WIDTH = 240;
-const MONOGRAM_HEIGHT = 160;
+const MONOGRAM_WIDTH = 256;
+const MONOGRAM_HEIGHT = 256;
 
-export function Monogram({ size = 36, className }: { size?: number; className?: string }) {
-  // Scale the PNG to roughly match the previous inline SVG size.
-  const scale = size / MONOGRAM_HEIGHT;
-
+export function Monogram({ size = 40, className }: { size?: number; className?: string }) {
   return (
     <Image
-      src="/photos/monogram.png"
+      src="/assets/monogram.svg"
       alt="A and R monogram"
       width={MONOGRAM_WIDTH}
       height={MONOGRAM_HEIGHT}
       className={className}
-      style={{ width: MONOGRAM_WIDTH * scale, height: MONOGRAM_HEIGHT * scale }}
+      style={{ width: size, height: size }}
       priority
     />
   );

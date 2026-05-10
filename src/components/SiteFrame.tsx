@@ -1,8 +1,11 @@
 'use client';
 
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { DateEasterEgg } from './DateEasterEgg';
 import { Monogram } from './Monogram';
 import { SiteHeader } from './SiteHeader';
+import { site } from '../content/site';
 
 type Props = {
   coupleNames: string;
@@ -26,7 +29,16 @@ export function SiteFrame({ coupleNames, dateText, locationText, children }: Pro
             <div className="font-heading text-lg text-charcoal tracking-[0.15em] uppercase text-center">
               {coupleNames}
             </div>
-            <div className="text-xs uppercase tracking-[0.25em]">{dateText} • {locationText}</div>
+            <div className="text-xs uppercase tracking-[0.25em]">
+              <DateEasterEgg defaultText={dateText} targetDate={site.date} className="inline" /> • {locationText}
+            </div>
+            <Image
+              src="/assets/heart.svg"
+              alt="Heart motif"
+              width={54}
+              height={54}
+              className="mt-2 h-auto w-8 opacity-85"
+            />
           </div>
         </footer>
       )}

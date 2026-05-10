@@ -24,9 +24,9 @@ These are the only colours used across all wedding materials. Do not introduce c
 | Name | Hex | Usage |
 |---|---|---|
 | Warm Ivory | `#fdfbf7` | Primary background on all materials; paper stock colour |
-| Fermanagh Mauve | `#9c7a8c` | Primary accent — all headings, labels, UI elements, navigation, section markers |
-| Blush Rose | `#dbb8b8` | CTA buttons, warm highlights, hero RSVP elements |
-| Connaught Sage | `#8fa888` | Irish nature accent — botanical motifs, floral elements |
+| Fermanagh Mauve | `#9c7a8c` | Primary invitation ink — couple names, ampersand, date lines, key headings |
+| Blush Rose | `#dd9f9f` | CTA buttons, warm highlights, hero RSVP elements |
+| Connaught Sage | `#8fa888` | Botanical line art + Irish phrase accents + divider lines on stationery |
 | Lough Gold | `#d4c5a9` | Decorative only — foil print, divider lines, gem accents, borders |
 | Charcoal | `#3a3530` | All body text |
 | Stone | `#e8e2da` | Card borders, dividers, subtle section backgrounds |
@@ -37,26 +37,32 @@ These are the only colours used across all wedding materials. Do not introduce c
 - Never use red, orange, bright yellow, or cool blues
 - Lough Gold is decorative only — never use it for body text or interactive elements
 - Connaught Sage is for botanical/floral motifs only — not a general accent colour
+- On the main invitation face, keep colour roles fixed: names/ampersand/date in Mauve, Irish phrase + divider in Sage, calligraphic lead-ins in Blush
 
 ---
 
 ## 02 · Typography
 
 ### Digital (website)
-- **Headings / Display:** Cormorant Garamond — weights 300, 400, 500; light italic for Irish phrases and pull quotes
+- **Headings / Display:** Cormorant Garamond — weights 300, 400, 500
 - **Body / Navigation / Labels:** Jost — weights 300, 400, 500
+- **Script accents only:** Charmonman and Amoresa (used sparingly for Irish phrase lines, signature-style accents, and invitation-style callouts)
 
 ### Print (menus, programmes, stationery)
-- **Headings / Display:** Cormorant Garamond — same as digital
-- **Body:** EB Garamond (preferred over Jost for print — keeps everything in the serif family, gives a more heirloom feel)
+- **Primary serif (names, dates, core content):** Cormorant Garamond
+- **Secondary script (Irish phrases / romantic flourishes):** Charmonman
+- **Calligraphic accent script (short feature lines only):** Amoresa
+- **Body / supporting copy:** Cormorant Garamond (or EB Garamond where extra legibility is needed in dense print)
 
 ### Type scale rules
-- Hero / couple names: Cormorant Garamond 300, large, wide letter-spacing (~0.1em)
+- Hero / couple names: Cormorant Garamond 300, large, normal-to-slight letter-spacing (tight, elegant, not airy)
 - Section headings: Cormorant Garamond 300–400, letter-spacing ~0.05em
 - Section eyebrows / labels: Jost 400–500, ALL CAPS, letter-spacing ~0.2–0.3em, Fermanagh Mauve colour
-- Body text: Jost or EB Garamond 300–400, normal case, relaxed line-height (~1.7)
-- Irish language phrases: Cormorant Garamond 300 italic, Fermanagh Mauve or Blush Rose colour
+- Body text: Jost (digital) or Cormorant Garamond / EB Garamond (print), 300–400, normal case, relaxed line-height (~1.7)
+- Irish language phrases: Charmonman, Connaught Sage colour on invitation face
+- Calligraphic invitation lead-ins (for example "request the company of"): Amoresa, Blush Rose colour
 - Card timestamps / accent numbers: Cormorant Garamond, Fermanagh Mauve colour
+- Ampersand between names: Amoresa, same Mauve as the names (not a contrasting colour)
 
 ---
 
@@ -91,7 +97,7 @@ These five elements should appear consistently across every material — digital
 
 ### 5. Irish Language Phrases (textual motif)
 - One short Irish phrase per material, used as a footer or closing line
-- Rendering: Cormorant Garamond 300 italic, Fermanagh Mauve or Blush Rose
+- Rendering: Charmonman, Fermanagh Mauve or Blush Rose
 - **Approved phrases:**
   - `Le grá agus le háthas` — With love and joy (primary phrase, used most widely)
   - `Fáilte romhaibh` — Welcome (used on signage and menus)
@@ -159,7 +165,7 @@ Applies to: website copy, invitations, menus, programmes, signage, RSVP communic
 Base prompt — substitute the bracketed element for the specific asset required:
 
 ```
-[wedding invitation flat lay / lakeside ceremony scene / couple portrait / floral arrangement detail] — romantic late-summer Irish wedding at a grand lakeside resort hotel, soft golden afternoon light, colour palette of warm ivory, dusty rose, faded mauve, sage green and antique gold, delicate botanical line illustrations, Cormorant Garamond serif typography, watercolour-washed linen texture, ancient stone castle silhouette as background detail, Bridgerton-inspired elegance grounded in real Irish landscape, editorial film photography aesthetic, unhurried and timeless, soft focus, no harsh shadows, no bright whites, no modern graphic elements --ar 3:2 --style raw --stylize 750 --v 7
+[wedding invitation flat lay / lakeside ceremony scene / couple portrait / floral arrangement detail] — romantic late-summer Irish wedding at a grand lakeside resort hotel, soft golden afternoon light, colour palette of warm ivory, dusty rose, faded mauve, sage green and antique gold, delicate botanical line illustrations, mixed typography pairing Cormorant Garamond with Charmonman and Amoresa accents, watercolour-washed linen texture, ancient stone castle silhouette as background detail, Bridgerton-inspired elegance grounded in real Irish landscape, editorial film photography aesthetic, unhurried and timeless, soft focus, no harsh shadows, no bright whites, no modern graphic elements --ar 3:2 --style raw --stylize 750 --v 7
 ```
 
 **Add-ons by asset type:**
@@ -174,12 +180,12 @@ Base prompt — substitute the bracketed element for the specific asset required
 
 | Material | Spec | Key Motifs |
 |---|---|---|
-| Invitations | Ivory uncoated card, Mauve ink, Lough Gold foil on names | Botanical corner sprigs, castle watermark, diamond gem dividers |
-| Website | Cormorant Garamond + Jost, frosted glass cards, Mauve accent | Lough water-line dividers, Irish phrase in italic, A & R monogram |
-| Menus | Single folded A5, ivory, Cormorant heading | Wave divider between courses, diamond gem, Irish phrase footer |
+| Invitations | Ivory card face; Cormorant Garamond names/date in Mauve; Amoresa ampersand in Mauve; Charmonman Irish phrase in Sage; Amoresa lead-ins in Blush | Castle line-art in Sage, single sage divider line, airy vertical spacing |
+| Website | Cormorant Garamond + Jost, frosted glass cards, Mauve accent; optional restrained Charmonman accents | Lough water-line dividers, Irish phrase in script, A & R monogram |
+| Menus | Single folded A5, ivory, Cormorant Garamond heading with selective Charmonman accents | Wave divider between courses, diamond gem, Irish phrase footer |
 | Programmes | A5 portrait, Cormorant headings, EB Garamond body | Devenish & Menlo silhouettes on cover, foliage sprig, Irish phrase on back |
 | Signage | Sage green or ivory boards, Mauve lettering, gold accents | Lough water-line divider, castle silhouette, directional diamond gem |
-| Place cards | Cormorant Garamond name in Mauve, table label in Jost below | Pressed botanical or gold corner flourish |
+| Place cards | Cormorant Garamond name in Mauve, table label in Jost below; optional Amoresa accent line | Pressed botanical or gold corner flourish |
 | Thank-you cards | Cormorant italic, short warm copy | Lough water-line, *Go raibh maith agaibh* in Mauve |
 
 ---
@@ -191,7 +197,7 @@ Base prompt — substitute the bracketed element for the specific asset required
 | Partner 1 | Rob (from Galway, Co. Galway) |
 | Partner 2 | Alannah (from Fermanagh, Co. Fermanagh) |
 | Couple display name | Rob & Alannah |
-| Monogram | A&R calligraphic script — font: Snell Roundhand. Export as PNG for cross-browser/print use (Snell Roundhand is an Apple system font and renders incorrectly on other platforms). Web alternative if needed: Great Vibes (Google Fonts) |
+| Monogram | A&R calligraphic script — primary font: Amoresa. If unavailable on web, export as transparent PNG/SVG asset and embed consistently across materials. |
 | Met | 14 August 2020, Galway |
 | Proposed | Dog's Bay, Connemara, Co. Galway, 2024 |
 | Venue | Lough Erne Resort, Enniskillen, Co. Fermanagh |
@@ -203,3 +209,18 @@ Base prompt — substitute the bracketed element for the specific asset required
 ---
 
 *This brief is the single source of truth for all wedding design decisions. Any agent generating copy, visuals, or design assets for this wedding should treat this document as authoritative.*
+
+---
+
+## Canva Master Invite Mapping (Authoritative Visual Spec)
+
+Use this exact mapping when recreating the main invite front:
+
+- Top illustration (castle line drawing): `Connaught Sage #8fa888`
+- Primary Irish phrase (`Le grá agus le háthas`): `Charmonman`, `Connaught Sage #8fa888`
+- Couple names: `Cormorant Garamond`, `Fermanagh Mauve #9c7a8c`
+- Ampersand between names: `Amoresa`, `Fermanagh Mauve #9c7a8c`
+- Calligraphic lead-ins (`request the company of`, `to celebrate their wedding`, `on`): `Amoresa`, `Blush Rose #dd9f9f`
+- Divider line: `Connaught Sage #8fa888`
+- Date line (`Friday 28th August 2026`): `Cormorant Garamond`, `Fermanagh Mauve #9c7a8c`
+- Background: warm light neutral in the ivory/stone family (avoid pure white)
