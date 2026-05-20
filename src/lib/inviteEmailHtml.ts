@@ -17,7 +17,7 @@ export function buildInviteEmailHtml(displayName: string, rsvpUrl: string, baseU
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:12px;border-collapse:collapse">
         <tr>
           <td width="34%" align="left" valign="top">
-            <img src="${assetBase}/assets/menlo-castle.svg" width="86" alt="" style="display:block;border:0;outline:none;text-decoration:none;opacity:0.7">
+            <img src="${assetBase}/assets/menlo-castle-rsvp.png" width="86" alt="" style="display:block;border:0;outline:none;text-decoration:none;opacity:0.7">
           </td>
           <td width="32%" align="center" valign="top">
             <p style="margin:2px 0 0;font-family:'Cormorant Garamond',Georgia,serif;font-size:18px;letter-spacing:0.16em;color:#9c7a8c">
@@ -32,7 +32,7 @@ export function buildInviteEmailHtml(displayName: string, rsvpUrl: string, baseU
         le grá agus le háthas
       </p>
       <h1 style="margin:9px 0 0;font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:60px;line-height:0.94;font-weight:400;letter-spacing:0.01em;color:#9c7a8c">
-        Alannah and Rob
+        Alannah & Rob
       </h1>
       <p style="margin:5px 0 0;font-family:'Charmonman','Brush Script MT','Segoe Script',cursive;font-size:22px;line-height:1.02;color:#dfc1c6;font-weight:400">
         invite you to celebrate
@@ -56,9 +56,13 @@ export function buildInviteEmailHtml(displayName: string, rsvpUrl: string, baseU
       <div style="text-align:center;margin-top:16px">
         <a href="${rsvpUrl}" style="display:inline-block;background:#dbb8b8;border:1px solid #dbb8b8;color:#3a3530;text-decoration:none;padding:12px 30px;border-radius:999px;font-family:'Jost',Arial,sans-serif;font-size:11px;font-weight:500;letter-spacing:0.22em;text-transform:uppercase">RSVP Now</a>
       </div>
+      <p style="margin:14px 0 0;font-family:'Jost',Arial,sans-serif;font-size:12px;line-height:1.5;color:#7a756f;text-align:center">
+        If the button does not work, use this link:<br>
+        <a href="${rsvpUrl}" style="color:#9c7a8c">Open your RSVP link</a>
+      </p>
 
       <div style="text-align:right;margin-top:15px">
-        <img src="${assetBase}/assets/devenish-tower.svg" width="108" alt="" style="display:inline-block;border:0;outline:none;text-decoration:none;opacity:0.75">
+        <img src="${assetBase}/assets/devenish-tower-rsvp.png" width="108" alt="" style="display:inline-block;border:0;outline:none;text-decoration:none;opacity:0.75">
       </div>
     </div>
   </div>

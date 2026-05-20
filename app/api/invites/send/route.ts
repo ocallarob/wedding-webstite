@@ -36,9 +36,9 @@ export async function POST(request: NextRequest) {
       try {
         const rsvpUrl = `${baseUrl}/rsvp?token=${household.invite_token}`;
         await resend.emails.send({
-          from: 'Alannah and Rob <hello@alannah-rob.ie>',
+          from: 'Alannah & Rob <hello@alannah-rob.ie>',
           to: household.contact_email as string,
-          subject: "You're invited — Alannah and Rob, 28 August 2026",
+          subject: "You're invited — Alannah & Rob, 28 August 2026",
           html: buildInviteEmailHtml(household.display_name as string, rsvpUrl, baseUrl),
         });
 

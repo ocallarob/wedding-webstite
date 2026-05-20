@@ -27,7 +27,7 @@ function buildReminderEmailHtml(displayName: string, rsvpUrl: string, baseUrl: s
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:12px;border-collapse:collapse">
         <tr>
           <td width="33.33%" align="left" valign="top">
-            <img src="${assetBase}/assets/menlo-castle.svg" width="78" alt="" style="display:block;border:0;outline:none;text-decoration:none;opacity:0.7">
+            <img src="${assetBase}/assets/menlo-castle-rsvp.png" width="78" alt="" style="display:block;border:0;outline:none;text-decoration:none;opacity:0.7">
           </td>
           <td width="33.33%" align="center" valign="top">
             <p style="margin:2px 0 0;font-family:'Cormorant Garamond',Georgia,serif;font-size:18px;letter-spacing:0.16em;color:#9c7a8c">A ◇ R</p>
@@ -40,7 +40,7 @@ function buildReminderEmailHtml(displayName: string, rsvpUrl: string, baseUrl: s
         just a gentle reminder
       </p>
       <h1 style="margin:9px 0 0;font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:60px;line-height:0.94;font-weight:400;letter-spacing:0.01em;color:#9c7a8c">
-        Alannah and Rob
+        Alannah & Rob
       </h1>
       <p style="margin:5px 0 0;font-family:'Charmonman','Brush Script MT','Segoe Script',cursive;font-size:24px;line-height:1.02;color:#dbb8b8;font-weight:400">
         for our wedding weekend
@@ -66,12 +66,16 @@ function buildReminderEmailHtml(displayName: string, rsvpUrl: string, baseUrl: s
           RSVP Now
         </a>
       </div>
+      <p style="margin:12px 0 0;font-family:'Jost',Arial,sans-serif;font-size:12px;line-height:1.5;color:#7a756f;text-align:center">
+        If the button does not work, use this link:<br>
+        <a href="${rsvpUrl}" style="color:#9c7a8c">Open your RSVP link</a>
+      </p>
       <p style="margin:14px 0 0;font-size:12px;color:#7a756f;text-align:center">
         Kindly respond by 1 August 2026
       </p>
 
       <div style="text-align:right;margin-top:15px">
-        <img src="${assetBase}/assets/devenish-tower.svg" width="108" alt="" style="display:inline-block;border:0;outline:none;text-decoration:none;opacity:0.75">
+        <img src="${assetBase}/assets/devenish-tower-rsvp.png" width="108" alt="" style="display:inline-block;border:0;outline:none;text-decoration:none;opacity:0.75">
       </div>
 
     </div>
@@ -158,9 +162,9 @@ export async function POST(request: NextRequest) {
     const results = await Promise.allSettled(rows.map(async (h) => {
       try {
         await resend.emails.send({
-          from: 'Alannah and Rob <hello@alannah-rob.ie>',
+          from: 'Alannah & Rob <hello@alannah-rob.ie>',
           to: h.contact_email as string,
-          subject: 'Kind reminder: RSVP for Alannah and Rob wedding',
+          subject: 'Kind reminder: RSVP for Alannah & Rob wedding',
           html: buildReminderEmailHtml(h.display_name as string, `${baseUrl}/rsvp?token=${h.invite_token}`, baseUrl),
         });
         await sql`UPDATE households SET reminder_count = reminder_count + 1, last_reminder_at = now(), reminder_failed_count = 0, last_reminder_failed_at = NULL WHERE id = ${h.id}`;
