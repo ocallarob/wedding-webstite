@@ -16,7 +16,7 @@ type Props = {
 
 export function SiteFrame({ coupleNames, dateText, locationText, children }: Props) {
   const pathname = usePathname();
-  const hideChrome = pathname === '/save-the-date' || pathname === '/';
+  const hideChrome = pathname === '/save-the-date' || pathname === '/' || pathname.startsWith('/dashboard');
 
   return (
     <div className="min-h-screen flex flex-col bg-ivory text-charcoal">

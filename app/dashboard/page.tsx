@@ -1,6 +1,7 @@
 import { sql } from '../../src/lib/db';
 import { site } from '../../src/content/site';
 import { ExpandableCell } from './ExpandableCell';
+import { SendInitialInvitesButton } from './SendInitialInvitesButton';
 import { cookies } from 'next/headers';
 import { verifyAdminSessionToken } from '../../src/lib/adminSession';
 import { createCsrfToken } from '../../src/lib/csrf';
@@ -158,6 +159,7 @@ export default async function DashboardPage({ searchParams }: Props) {
         <p className="text-xs uppercase tracking-[0.2em] text-muted">Dashboard</p>
         <h1 className="font-heading text-4xl font-semibold text-charcoal">{site.coupleNames}</h1>
         <div className="flex items-center justify-center gap-4 pt-1">
+          <SendInitialInvitesButton />
           <form action="/api/dashboard" method="POST">
             <input type="hidden" name="action" value="send_reminders" />
             <input type="hidden" name="csrf_token" value={csrfToken} />

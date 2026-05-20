@@ -85,7 +85,7 @@ export default function HomePage() {
                 We are so excited to welcome you to the Lough Erne for a weekend full of love, laughter, and lasting memories.
               </p>
               <p className="text-sm leading-7 text-muted">
-                From Galway to Fermanagh, this day carries both of our homes with it, and we cannot wait to celebrate
+                From Galway to Fermanagh, this day carries both of our families with it, and we cannot wait to celebrate
                 with all of you.
               </p>
               <WaveDivider />
@@ -154,13 +154,16 @@ export default function HomePage() {
           <div className="space-y-2 pt-20 text-center md:pt-0">
             <SectionMonogramMark />
             <span className="group relative inline-grid place-items-center">
-              <h2 className="font-heading text-4xl font-light tracking-[0.04em] text-mauve opacity-100 transition-opacity duration-150 group-hover:opacity-0 group-focus-within:opacity-0" style={{ gridArea: '1 / 1' }}>
+              <h2
+                tabIndex={0}
+                className="peer font-heading text-4xl font-light tracking-[0.04em] text-mauve opacity-100 outline-none transition-opacity duration-150 group-hover:opacity-0 peer-focus-visible:opacity-0"
+                style={{ gridArea: '1 / 1' }}
+              >
                 <span className="font-script mr-2 text-[0.95em] text-blush" style={{ fontFamily: 'var(--font-script), cursive' }}>ár</span>
                 Clár na Bainise
               </h2>
               <h2
-                tabIndex={0}
-                className="font-heading text-4xl font-light tracking-[0.04em] text-mauve opacity-0 outline-none transition-opacity duration-150 group-hover:opacity-100 group-focus:opacity-100"
+                className="pointer-events-none font-heading text-4xl font-light tracking-[0.04em] text-mauve opacity-0 transition-opacity duration-150 group-hover:opacity-100 peer-focus-visible:opacity-100"
                 style={{ gridArea: '1 / 1' }}
               >
                 <span className="font-script mr-2 text-[0.95em] text-blush" style={{ fontFamily: 'var(--font-script), cursive' }}>Our</span>
@@ -263,13 +266,13 @@ function IrishPhrase({ phrase, translation, className }: { phrase: string; trans
     <span className="group relative inline-grid place-items-center">
       <span
         tabIndex={0}
-        className={`font-script leading-none text-blush opacity-100 outline-none transition-opacity duration-150 group-hover:opacity-0 group-focus:opacity-0 ${className ?? ''}`}
+        className={`peer font-script leading-none text-blush opacity-100 outline-none transition-opacity duration-150 group-hover:opacity-0 peer-focus-visible:opacity-0 ${className ?? ''}`}
         style={{ fontFamily: 'var(--font-script), cursive', gridArea: '1 / 1' }}
       >
         {phrase}
       </span>
       <span
-        className={`pointer-events-none font-script leading-none text-blush opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 ${className ?? ''}`}
+        className={`pointer-events-none font-script leading-none text-blush opacity-0 transition-opacity duration-150 group-hover:opacity-100 peer-focus-visible:opacity-100 ${className ?? ''}`}
         style={{ fontFamily: 'var(--font-script), cursive', gridArea: '1 / 1' }}
       >
         {translation}
