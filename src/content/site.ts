@@ -1,5 +1,5 @@
 export const site = {
-  coupleNames: 'Rob & Alannah',
+  coupleNames: 'Alannah and Rob',
   dateText: 'Friday, August 28 2026',
   date: '28/08/2026',
   countdownDateTime: '2026-08-28T13:00:00+01:00',

@@ -40,7 +40,7 @@ function buildReminderEmailHtml(displayName: string, rsvpUrl: string, baseUrl: s
         just a gentle reminder
       </p>
       <h1 style="margin:9px 0 0;font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:60px;line-height:0.94;font-weight:400;letter-spacing:0.01em;color:#9c7a8c">
-        Rob &amp; Alannah
+        Alannah and Rob
       </h1>
       <p style="margin:5px 0 0;font-family:'Charmonman','Brush Script MT','Segoe Script',cursive;font-size:24px;line-height:1.02;color:#dbb8b8;font-weight:400">
         for our wedding weekend
@@ -158,9 +158,9 @@ export async function POST(request: NextRequest) {
     const results = await Promise.allSettled(rows.map(async (h) => {
       try {
         await resend.emails.send({
-          from: 'Rob & Alannah <hello@alannah-rob.ie>',
+          from: 'Alannah and Rob <hello@alannah-rob.ie>',
           to: h.contact_email as string,
-          subject: 'Kind reminder: RSVP for Rob & Alannah wedding',
+          subject: 'Kind reminder: RSVP for Alannah and Rob wedding',
           html: buildReminderEmailHtml(h.display_name as string, `${baseUrl}/rsvp?token=${h.invite_token}`, baseUrl),
         });
         await sql`UPDATE households SET reminder_count = reminder_count + 1, last_reminder_at = now(), reminder_failed_count = 0, last_reminder_failed_at = NULL WHERE id = ${h.id}`;

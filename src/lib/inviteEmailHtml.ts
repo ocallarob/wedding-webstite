@@ -32,7 +32,7 @@ export function buildInviteEmailHtml(displayName: string, rsvpUrl: string, baseU
         le grá agus le háthas
       </p>
       <h1 style="margin:9px 0 0;font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:60px;line-height:0.94;font-weight:400;letter-spacing:0.01em;color:#9c7a8c">
-        Rob &amp; Alannah
+        Alannah and Rob
       </h1>
       <p style="margin:5px 0 0;font-family:'Charmonman','Brush Script MT','Segoe Script',cursive;font-size:22px;line-height:1.02;color:#dfc1c6;font-weight:400">
         invite you to celebrate

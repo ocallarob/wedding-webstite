@@ -1,5 +1,5 @@
 # Wedding Design Brief
-**Rob & Alannah · 28 August 2026 · Lough Erne Resort, Enniskillen, Co. Fermanagh**
+**Alannah and Rob · 28 August 2026 · Lough Erne Resort, Enniskillen, Co. Fermanagh**
 
 ---
 
@@ -7,7 +7,7 @@
 
 | Field | Value |
 |---|---|
-| Couple | Rob & Alannah |
+| Couple | Alannah and Rob |
 | Date | 28 August 2026 |
 | Venue | Lough Erne Resort |
 | Location | Enniskillen, Co. Fermanagh, Ireland |
@@ -156,7 +156,7 @@ Applies to: website copy, invitations, menus, programmes, signage, RSVP communic
 - No bullet points in romantic or emotional copy — write in sentences
 - Avoid passive voice
 - Don't over-explain logistics — keep practical information brief and warm
-- Always use both names together when addressing the couple: *Rob & Alannah*, never just one name alone
+- Always use both names together when addressing the couple: *Alannah and Rob*, never just one name alone
 
 ---
 
@@ -196,7 +196,7 @@ Base prompt — substitute the bracketed element for the specific asset required
 |---|---|
 | Partner 1 | Rob (from Galway, Co. Galway) |
 | Partner 2 | Alannah (from Fermanagh, Co. Fermanagh) |
-| Couple display name | Rob & Alannah |
+| Couple display name | Alannah and Rob |
 | Monogram | A&R calligraphic script — primary font: Amoresa. If unavailable on web, export as transparent PNG/SVG asset and embed consistently across materials. |
 | Met | 14 August 2020, Galway |
 | Proposed | Dog's Bay, Connemara, Co. Galway, 2024 |
