@@ -91,7 +91,7 @@ function InvalidLink() {
     <div className="mx-auto max-w-xl px-5 pt-[72px] pb-20 text-center space-y-4">
       <p className="text-xs uppercase tracking-[0.2em] text-muted">RSVP</p>
       <h1 className="font-heading text-3xl font-light text-charcoal">Invalid invite link</h1>
-      <p className="text-sm text-muted leading-7">This link does not look right. Please use the RSVP button from your invite email.</p>
+      <p className="text-sm text-muted leading-7">This link does not look right. Please check your email and use your RSVP link from the invite.</p>
     </div>
   );
 }

@@ -9,9 +9,16 @@ export function middleware(request: NextRequest) {
   const isInternal = pathname.startsWith('/_next') || pathname.startsWith('/api');
   const isPublicAsset = PUBLIC_FILE.test(pathname);
 
-  const isAllowed = pathname.startsWith('/rsvp') || pathname.startsWith('/dashboard');
+  const isAllowedRoute =
+    pathname.startsWith('/rsvp') ||
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/weekend') ||
+    pathname.startsWith('/travel') ||
+    pathname.startsWith('/gallery') ||
+    pathname.startsWith('/save-the-date') ||
+    pathname.startsWith('/invite-email-preview');
 
-  if (isRoot || isInternal || isPublicAsset || isAllowed) {
+  if (isRoot || isInternal || isPublicAsset || isAllowedRoute) {
     return NextResponse.next();
   }
 

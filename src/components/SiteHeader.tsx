@@ -53,19 +53,19 @@ export function SiteHeader() {
   return (
     <header
       className={[
-        'fixed top-0 left-0 right-0 z-30 transition-all duration-300',
+        'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
         show
-          ? 'opacity-100 translate-y-0 border-b border-stone/80 bg-ivory/95 backdrop-blur'
+          ? 'pointer-events-auto opacity-100 translate-y-0 border-b border-stone/80 bg-ivory/95 backdrop-blur'
           : 'opacity-0 -translate-y-2 pointer-events-none',
       ].join(' ')}
     >
       <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4">
-        <Link href="/" className="flex items-center gap-3 text-sm uppercase tracking-[0.2em] text-muted">
+        <Link href="/" className="relative z-10 flex items-center gap-3 text-sm uppercase tracking-[0.2em] text-muted">
           <Monogram />
           <span className="sr-only">Home</span>
         </Link>
 
-        <nav className="hidden gap-3 text-[11px] uppercase tracking-[0.24em] text-muted sm:flex">
+        <nav className="relative z-20 hidden gap-3 text-[11px] uppercase tracking-[0.24em] text-muted sm:flex">
           {navItems.map((item) => (
             <Link
               key={item.href}
@@ -77,7 +77,7 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="font-heading italic text-xl leading-none tracking-[0.18em] text-muted">
+        <div className="relative z-10 font-heading italic text-xl leading-none tracking-[0.18em] text-muted">
           <DateEasterEgg defaultText={site.date} targetDate={site.countdownDateTime} className="inline" />
         </div>
       </div>
