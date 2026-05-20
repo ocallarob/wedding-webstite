@@ -26,7 +26,7 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
   return (
     <div className="flex items-center justify-center gap-2">
       {Array.from({ length: total }).map((_, i) => (
-        <span key={i} className={i + 1 === current ? 'text-mauve text-base' : 'text-stone text-base'}>
+        <span key={i} className={i + 1 === current ? 'text-mauve text-lg' : 'text-stone text-lg'}>
           ◇
         </span>
       ))}
@@ -107,7 +107,8 @@ export function RsvpForm({ token, householdLabel, initialMembers, alreadyRsvpd, 
 
   if (done) {
     return (
-      <div className="rounded-2xl border border-stone bg-white/80 px-8 py-12 text-center space-y-5">
+      <div className="rounded-3xl border border-stone/80 bg-[#fffdf9] p-2 shadow-[0_22px_44px_rgba(89,70,80,0.08)]">
+        <div className="rounded-[1.35rem] border border-blush/80 px-8 py-12 text-center space-y-5 bg-gradient-to-b from-[#fffdf9] to-[#fff7f5]">
         <p className="font-heading text-3xl font-light text-charcoal">Thank you, {title}</p>
         <p className="text-sm text-muted leading-7">
           {anyAttending
@@ -115,13 +116,16 @@ export function RsvpForm({ token, householdLabel, initialMembers, alreadyRsvpd, 
             : "We're sorry you can't make it, but we appreciate you letting us know."}
         </p>
         <p className="font-heading italic text-mauve text-lg">Le grá agus le háthas</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-stone bg-white/80 overflow-hidden">
-      <div className="px-7 pt-7 pb-5 space-y-4">
+    <div className="rounded-3xl border border-stone/80 bg-[#fffdf9] p-2 shadow-[0_22px_44px_rgba(89,70,80,0.08)]">
+      <div className="rounded-[1.35rem] border border-blush/80 overflow-hidden bg-gradient-to-b from-[#fffdf9] to-[#fff7f5]">
+      <div className="px-7 pt-8 pb-6 space-y-4 text-center">
+        <p className="text-[11px] uppercase tracking-[0.3em] text-mauve">RSVP Card</p>
         <div className="flex items-center justify-between gap-4">
           <p className="font-heading text-2xl font-light text-charcoal truncate">{title}</p>
           <StepIndicator current={step} total={totalSteps} />
@@ -213,7 +217,7 @@ export function RsvpForm({ token, householdLabel, initialMembers, alreadyRsvpd, 
                 type="text"
                 value={song}
                 onChange={(e) => setSong(e.target.value)}
-                className="w-full rounded-xl border border-stone bg-white px-3 py-2.5"
+                className="w-full rounded-xl border border-stone bg-white px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-mauve/35 focus:ring-offset-1 focus:ring-offset-[#fffaf8]"
                 placeholder="We love great dance-floor picks"
               />
             </label>
@@ -223,7 +227,7 @@ export function RsvpForm({ token, householdLabel, initialMembers, alreadyRsvpd, 
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="min-h-[90px] w-full rounded-xl border border-stone bg-white px-3 py-2.5"
+                className="min-h-[90px] w-full rounded-xl border border-stone bg-white px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-mauve/35 focus:ring-offset-1 focus:ring-offset-[#fffaf8]"
                 placeholder="Any notes we should know?"
               />
             </label>
@@ -242,6 +246,7 @@ export function RsvpForm({ token, householdLabel, initialMembers, alreadyRsvpd, 
           </div>
         )}
       </form>
+      </div>
     </div>
   );
 }
