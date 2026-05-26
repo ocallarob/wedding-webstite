@@ -26,11 +26,13 @@ DATABASE_URL=...
 RESEND_API_KEY=...
 ADMIN_SECRET=...
 NEXT_PUBLIC_BASE_URL=https://alannah-rob.ie
+PAPER_RSVP_CODE=your-shared-paper-invite-code
 ```
 
 Notes:
 - `ADMIN_SECRET` is used for dashboard login and admin API actions.
 - `NEXT_PUBLIC_BASE_URL` is used in email RSVP links.
+- `PAPER_RSVP_CODE` gates the paper-invite lookup page (`/rsvp/paper?code=...`).
 - For real recipients, keep `NEXT_PUBLIC_BASE_URL` on your branded domain (not preview/tunnel).
 
 ## Database
@@ -62,6 +64,7 @@ Columns:
 - `label` (optional display label)
 - `members` (required, `|` separated)
 - `member_types` (optional, `|` separated; values: `adult` or `child`)
+- `is_paper_invite` (optional; `true/false`, defaults to `false`)
 
 Dry run:
 
@@ -86,6 +89,12 @@ Behavior:
   1. attendance per member (Day 1 + Day 2)
   2. dietary per member
   3. song/message
+
+- `/rsvp/paper?code=...`
+  QR-code entry for paper invites:
+  1. search by name/email
+  2. one best match only (paper invite households only)
+  3. continue into normal `/rsvp?token=...` flow
 
 - `/dashboard`  
   Admin dashboard with:

@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import Link from 'next/link';
 import { site } from '../src/content/site';
 import { Monogram } from '../src/components/Monogram';
 import { DateEasterEgg } from '../src/components/DateEasterEgg';
@@ -33,21 +34,34 @@ const weekendSchedule: WeekendDay[] = site.weekendSchedule.map((day) => ({
   })),
 }));
 
+const homeNavItems = [
+  { href: '/our-story', label: 'Our Story' },
+  { href: '/wedding-party', label: 'Wedding Party' },
+  { href: '/weekend', label: 'Weekend' },
+  { href: '/travel', label: 'Travel' },
+  { href: '/gallery', label: 'Gallery' },
+];
+
 export default function HomePage() {
   return (
     <div className="relative overflow-hidden bg-ivory">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(219,184,184,0.22),transparent_50%),radial-gradient(circle_at_85%_20%,rgba(143,168,136,0.15),transparent_35%)]" />
       <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-16 px-5 pb-20 pt-10 sm:pt-14">
-        <section className="relative space-y-8 rounded-3xl border border-stone/80 bg-ivory/80 px-6 pb-10 pt-24 text-center shadow-[0_24px_80px_rgba(58,53,48,0.08)] backdrop-blur-sm sm:px-10 sm:pt-10">
-          <Image
-            src="/assets/devenish-tower.svg"
-            alt=""
-            aria-hidden
-            width={170}
-            height={120}
-            className="pointer-events-none absolute left-1/2 top-7 h-auto w-20 -translate-x-1/2 opacity-70 md:left-auto md:right-[9%] md:top-8 md:w-[120px] md:translate-x-0"
-          />
-          <Monogram size={58} className="mx-auto md:mx-0" />
+        <section className="relative space-y-8 rounded-3xl border border-stone/80 bg-ivory/80 px-6 pb-10 pt-8 text-center shadow-[0_24px_80px_rgba(58,53,48,0.08)] backdrop-blur-sm sm:px-10 sm:pt-10">
+          <div className="flex items-center justify-between gap-4">
+            <Link href="/" className="block w-fit shrink-0 no-underline" aria-label="Home">
+              <Monogram size={58} />
+            </Link>
+            <HomeHeroNav />
+            <Image
+              src="/assets/devenish-tower.svg"
+              alt=""
+              aria-hidden
+              width={170}
+              height={120}
+              className="h-auto w-20 shrink-0 opacity-70 md:w-[120px]"
+            />
+          </div>
           <div className="space-y-4">
             <p className="text-xs uppercase text-mauve sm:tracking-[0.3em]">
               <DateEasterEgg
@@ -207,18 +221,39 @@ export default function HomePage() {
           </div>
         </section>
 
-        <div className="flex justify-center pb-2">
-          <Image
-            src="/assets/heart.svg"
-            alt=""
-            aria-hidden
-            width={88}
-            height={88}
-            className="h-auto w-12 opacity-85"
-          />
+        <div className="space-y-3 pb-2 text-center">
+          <p className="text-sm text-muted">
+            Any issues? Contact Rob or Alannah.
+          </p>
+          <div className="flex justify-center">
+            <Image
+              src="/assets/heart.svg"
+              alt=""
+              aria-hidden
+              width={88}
+              height={88}
+              className="h-auto w-12 opacity-85"
+            />
+          </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function HomeHeroNav() {
+  return (
+    <nav className="flex flex-1 flex-wrap items-center justify-center gap-x-7 gap-y-2 text-[11px] uppercase tracking-[0.24em] text-muted sm:gap-x-10">
+      {homeNavItems.map((item) => (
+        <Link
+          key={item.href}
+          href={item.href}
+          className="px-1 py-1 no-underline transition-colors hover:text-mauve"
+        >
+          {item.label}
+        </Link>
+      ))}
+    </nav>
   );
 }
 
