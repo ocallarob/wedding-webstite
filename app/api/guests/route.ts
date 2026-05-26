@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   if (!hasAdminAuth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const rows = await sql`
-    SELECT h.id, h.label, h.contact_email,
+    SELECT h.id, h.label, h.contact_email, h.is_paper_invite,
       COALESCE(json_agg(json_build_object('id', m.id, 'full_name', m.full_name, 'member_type', m.member_type, 'sort_order', m.sort_order)
       ORDER BY m.sort_order, m.created_at) FILTER (WHERE m.id IS NOT NULL), '[]'::json) AS members
     FROM households h
@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const contactEmail = String(body.contact_email ?? '').trim().toLowerCase();
   const label = String(body.label ?? '').trim() || null;
+  const isPaperInvite = Boolean(body.is_paper_invite);
   const members = Array.isArray(body.members) ? body.members : [];
 
   if (!contactEmail) return NextResponse.json({ error: 'contact_email required' }, { status: 400 });
@@ -36,9 +37,11 @@ export async function POST(request: NextRequest) {
   if (!emailRegex.test(contactEmail)) return NextResponse.json({ error: 'invalid email address' }, { status: 400 });
 
   const inserted = await sql`
-    INSERT INTO households (contact_email, label)
-    VALUES (${contactEmail}, ${label})
-    ON CONFLICT (contact_email) DO UPDATE SET label = EXCLUDED.label
+    INSERT INTO households (contact_email, label, is_paper_invite)
+    VALUES (${contactEmail}, ${label}, ${isPaperInvite})
+    ON CONFLICT (contact_email) DO UPDATE SET
+      label = EXCLUDED.label,
+      is_paper_invite = EXCLUDED.is_paper_invite
     RETURNING id
   `;
 

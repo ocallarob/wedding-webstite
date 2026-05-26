@@ -13,6 +13,7 @@ async function migrate() {
       invite_token           UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
       contact_email          TEXT NOT NULL UNIQUE,
       label                  TEXT,
+      is_paper_invite        BOOLEAN NOT NULL DEFAULT false,
       invited_at             TIMESTAMPTZ,
       invite_failed_count    INTEGER NOT NULL DEFAULT 0,
       last_invite_failed_at  TIMESTAMPTZ,

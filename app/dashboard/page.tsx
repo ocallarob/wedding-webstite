@@ -20,6 +20,7 @@ type Row = {
   id: string;
   label: string | null;
   contact_email: string;
+  is_paper_invite: boolean;
   invited_at: string | null;
   invite_failed_count: number;
   reminder_count: number;
@@ -116,6 +117,7 @@ export default async function DashboardPage({ searchParams }: Props) {
       h.id,
       h.label,
       h.contact_email,
+      h.is_paper_invite,
       h.invited_at,
       h.invite_failed_count,
       h.reminder_count,
@@ -195,7 +197,7 @@ export default async function DashboardPage({ searchParams }: Props) {
         <table className="w-full text-sm">
           <thead className="bg-stone/40 text-left">
             <tr>
-              {['Household', 'Contact Email', 'Status', 'Send Status', 'Members', 'Song', 'Message'].map((h) => (
+              {['Household', 'Contact Email', 'Paper Invite', 'Status', 'Send Status', 'Members', 'Song', 'Message'].map((h) => (
                 <th key={h} className="px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-muted font-normal whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -205,6 +207,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               <tr key={row.id} className="bg-ivory/60 hover:bg-stone/20 transition-colors align-top">
                 <td className="px-4 py-3 font-medium text-charcoal whitespace-nowrap">{householdName(row)}</td>
                 <td className="px-4 py-3 text-muted">{row.contact_email}</td>
+                <td className="px-4 py-3 text-muted whitespace-nowrap">{row.is_paper_invite ? 'Yes' : 'No'}</td>
                 <td className="px-4 py-3 text-muted whitespace-nowrap">{status(row)}</td>
                 <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">{sendStatus(row)}</td>
                 <td className="px-4 py-3 text-xs text-muted min-w-[340px]">
@@ -218,7 +221,7 @@ export default async function DashboardPage({ searchParams }: Props) {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-muted">No households yet.</td>
+                <td colSpan={8} className="px-4 py-10 text-center text-muted">No households yet.</td>
               </tr>
             )}
           </tbody>

@@ -7,6 +7,7 @@ type InputRow = {
   label: string;
   members: string[];
   member_types: string[];
+  is_paper_invite: boolean;
 };
 
 const sql = neon(process.env.DATABASE_URL!);
@@ -62,6 +63,7 @@ function parseRows(csv: string): InputRow[] {
     label: header.indexOf('label'),
     members: header.indexOf('members'),
     member_types: header.indexOf('member_types'),
+    is_paper_invite: header.indexOf('is_paper_invite'),
   };
 
   const rows: InputRow[] = [];
@@ -72,6 +74,7 @@ function parseRows(csv: string): InputRow[] {
     const label = (cols[idx.label] ?? '').trim();
     const membersRaw = (cols[idx.members] ?? '').trim();
     const memberTypesRaw = idx.member_types >= 0 ? (cols[idx.member_types] ?? '').trim() : '';
+    const isPaperInviteRaw = idx.is_paper_invite >= 0 ? (cols[idx.is_paper_invite] ?? '').trim().toLowerCase() : '';
 
     if (!contactEmail) throw new Error(`Row ${i + 1}: contact_email is required`);
     if (!membersRaw) throw new Error(`Row ${i + 1}: members is required`);
@@ -88,6 +91,7 @@ function parseRows(csv: string): InputRow[] {
       label,
       members,
       member_types: memberTypes,
+      is_paper_invite: isPaperInviteRaw === 'true' || isPaperInviteRaw === '1' || isPaperInviteRaw === 'yes',
     });
   }
 
@@ -100,9 +104,11 @@ function asMemberType(raw: string | undefined): 'adult' | 'child' {
 
 async function upsertHousehold(row: InputRow): Promise<void> {
   const inserted = await sql`
-    INSERT INTO households (contact_email, label)
-    VALUES (${row.contact_email}, ${row.label || null})
-    ON CONFLICT (contact_email) DO UPDATE SET label = EXCLUDED.label
+    INSERT INTO households (contact_email, label, is_paper_invite)
+    VALUES (${row.contact_email}, ${row.label || null}, ${row.is_paper_invite})
+    ON CONFLICT (contact_email) DO UPDATE SET
+      label = EXCLUDED.label,
+      is_paper_invite = EXCLUDED.is_paper_invite
     RETURNING id
   `;
 

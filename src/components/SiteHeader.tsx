@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { DateEasterEgg } from './DateEasterEgg';
 import { Monogram } from '../components/Monogram';
@@ -9,44 +8,16 @@ import { site } from '../content/site';
 
 const navItems = [
   { href: '/', label: 'Home' },
+  { href: '/our-story', label: 'Our Story' },
+  { href: '/wedding-party', label: 'Wedding Party' },
   { href: '/weekend', label: 'Weekend' },
   { href: '/travel', label: 'Travel' },
   { href: '/gallery', label: 'Gallery' },
-  { href: '/rsvp', label: 'RSVP' },
 ];
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const isHome = pathname === '/';
   const hideHeader = pathname === '/save-the-date';
-  const [show, setShow] = useState(!isHome);
-
-  useEffect(() => {
-    if (hideHeader) return;
-
-    if (!isHome) {
-      setShow(true);
-      return;
-    }
-
-    const el = document.getElementById('header-sentinel');
-    if (!el) {
-      // fallback: show header if sentinel is missing
-      setShow(true);
-      return;
-    }
-
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        // When sentinel is NOT visible, we've scrolled past it -> show header
-        setShow(!entry.isIntersecting);
-      },
-      { root: null, threshold: 0, rootMargin: '-8px 0px 0px 0px' }
-    );
-
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [hideHeader, isHome]);
 
   if (hideHeader) return null;
 
@@ -54,9 +25,7 @@ export function SiteHeader() {
     <header
       className={[
         'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
-        show
-          ? 'pointer-events-auto opacity-100 translate-y-0 border-b border-stone/80 bg-ivory/95 backdrop-blur'
-          : 'opacity-0 -translate-y-2 pointer-events-none',
+        'pointer-events-auto opacity-100 translate-y-0 border-b border-stone/80 bg-ivory/95 backdrop-blur',
       ].join(' ')}
     >
       <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4">
