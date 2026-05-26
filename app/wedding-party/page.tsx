@@ -53,7 +53,10 @@ function MemberCard({ member, reversed }: { member: PartyMember; reversed: boole
 }
 
 export default function WeddingPartyPage() {
-  const allMembers = site.weddingParty.flatMap((group) => group.members) as PartyMember[];
+  const allMembers = site.weddingParty.reduce<PartyMember[]>((acc, group) => {
+    acc.push(...group.members.map((member) => ({ ...member })));
+    return acc;
+  }, []);
   const mobileMembers = mobilePartyOrder
     .map((name) => allMembers.find((member) => member.name === name))
     .filter((member): member is PartyMember => Boolean(member));

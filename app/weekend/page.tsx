@@ -1,20 +1,28 @@
 import { site } from '../../src/content/site';
 
-const scheduleColumns = [
+type WeekendEvent = {
+  time: string;
+  title: string;
+  location: string;
+  locationUrl?: string;
+  description: string;
+};
+
+const scheduleColumns: { title: string; date: string; events: WeekendEvent[] }[] = [
   {
     title: 'Mass + Drinks + Dinner',
     date: 'Friday, 28 August 2026',
-    events: site.weekendSchedule[0]?.events.slice(0, 3) ?? [],
+    events: (site.weekendSchedule[0]?.events.slice(0, 3) ?? []) as WeekendEvent[],
   },
   {
     title: 'Evening Guests + Buffet',
     date: 'Friday, 28 August 2026',
-    events: site.weekendSchedule[0]?.events.slice(3, 5) ?? [],
+    events: (site.weekendSchedule[0]?.events.slice(3, 5) ?? []) as WeekendEvent[],
   },
   {
     title: 'Day 2',
     date: 'Saturday, 29 August 2026',
-    events: site.weekendSchedule[1]?.events.slice(0, 2) ?? [],
+    events: (site.weekendSchedule[1]?.events.slice(0, 2) ?? []) as WeekendEvent[],
   },
 ];
 
