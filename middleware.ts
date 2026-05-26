@@ -12,6 +12,8 @@ export function middleware(request: NextRequest) {
   const isAllowedRoute =
     pathname.startsWith('/rsvp') ||
     pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/our-story') ||
+    pathname.startsWith('/wedding-party') ||
     pathname.startsWith('/weekend') ||
     pathname.startsWith('/travel') ||
     pathname.startsWith('/gallery') ||

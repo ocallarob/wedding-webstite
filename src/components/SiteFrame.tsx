@@ -6,6 +6,7 @@ import { DateEasterEgg } from './DateEasterEgg';
 import { Monogram } from './Monogram';
 import { SiteHeader } from './SiteHeader';
 import { site } from '../content/site';
+import Link from 'next/link';
 
 type Props = {
   coupleNames: string;
@@ -17,6 +18,14 @@ type Props = {
 export function SiteFrame({ coupleNames, dateText, locationText, children }: Props) {
   const pathname = usePathname();
   const hideChrome = pathname === '/save-the-date' || pathname === '/' || pathname.startsWith('/dashboard');
+  const footerNavItems = [
+    { href: '/', label: 'Home' },
+    { href: '/our-story', label: 'Our Story' },
+    { href: '/wedding-party', label: 'Wedding Party' },
+    { href: '/weekend', label: 'Weekend' },
+    { href: '/travel', label: 'Travel' },
+    { href: '/gallery', label: 'Gallery' },
+  ];
 
   return (
     <div className="min-h-screen flex flex-col bg-ivory text-charcoal">
@@ -29,7 +38,14 @@ export function SiteFrame({ coupleNames, dateText, locationText, children }: Pro
             <div className="font-heading text-lg text-charcoal tracking-[0.15em] uppercase text-center">
               {coupleNames}
             </div>
-            <div className="text-xs uppercase tracking-[0.25em]">
+            <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[10px] uppercase tracking-[0.2em] text-muted">
+              {footerNavItems.map((item) => (
+                <Link key={item.href} href={item.href} className="no-underline hover:text-mauve hover:underline">
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+            <div className="text-center text-xs uppercase tracking-[0.25em]">
               <DateEasterEgg defaultText={dateText} targetDate={site.countdownDateTime} className="inline" /> • {locationText}
             </div>
             <Image
