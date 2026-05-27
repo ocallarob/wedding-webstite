@@ -36,23 +36,60 @@ const weekendSchedule: WeekendDay[] = site.weekendSchedule.map((day) => ({
 
 const homeWeekendCards: WeekendDay[] = [
   {
-    title: 'Our Wedding Day • Main Events',
-    date: 'Friday, 28 August 2026',
-    events: weekendSchedule[0]?.events.slice(0, 3) ?? [],
+    title: 'Day 1 • Ceremony',
+    date: 'Friday Afternoon',
+    events: [
+      {
+        time: '1:00 PM',
+        title: 'Wedding Mass',
+        location: "St. Mary's Church, Arney",
+        locationUrl:
+          'https://www.google.com/maps/place/St.+Mary%E2%80%99s+Catholic+Church/@54.2911654,-7.7823194,16823m/data=!3m1!1e3!4m10!1m2!2m1!1sSt+Marys+Church+Cleenish+Arney+Enniskillen+BT92+2DL!3m6!1s0x485e441da76136fd:0xe454921a3932c4f7!8m2!3d54.2911654!4d-7.6704973!15sCjNTdCBNYXJ5cyBDaHVyY2ggQ2xlZW5pc2ggQXJuZXkgRW5uaXNraWxsZW4gQlQ5MiAyREySAQ9jYXRob2xpY19jaHVyY2jgAQA!16s%2Fg%2F11g8xgfn9n?entry=ttu&g_ep=EgoyMDI2MDUyNS4wIKXMDSoASAFQAw%3D%3D',
+      },
+    ],
   },
   {
-    title: 'Our Wedding Day • Evening',
-    date: 'Friday, 28 August 2026',
-    events: weekendSchedule[0]?.events.slice(3, 5) ?? [],
+    title: 'Day 1 • Reception',
+    date: 'Friday Evening',
+    events: [
+      {
+        time: '3:00 PM',
+        title: 'Cocktails & Canapés',
+        location: 'The Ross Foyer, Lough Erne Resort',
+        locationUrl: 'https://www.lougherneresort.com/',
+      },
+      {
+        time: '6:00 PM',
+        title: 'Reception',
+        location: 'The Ross Suite, Lough Erne Resort',
+        locationUrl: 'https://www.lougherneresort.com/',
+      },
+    ],
   },
   {
-    title: 'Day Two • Charlies Bar',
-    date: 'Saturday, 29 August 2026',
-    events: weekendSchedule[1]?.events.slice(0, 2) ?? [],
+    title: 'Day 2 • Drinks & Music',
+    date: 'Saturday',
+    events: [
+      {
+        time: '3:00 PM',
+        title: 'Afternoon Drinks',
+        location: "Charlie's Bar",
+        locationUrl: 'https://www.google.com/maps/search/?api=1&query=Charlie%27s+Bar+1+Church+St+Enniskillen+BT74+7DW',
+      },
+    ],
   },
 ];
 
 const homeNavItems = [
+  { href: '/our-story', label: 'Our Story' },
+  { href: '/wedding-party', label: 'Wedding Party' },
+  { href: '/weekend', label: 'Weekend' },
+  { href: '/travel', label: 'Travel' },
+  { href: '/gallery', label: 'Gallery' },
+];
+
+const footerNavItems = [
+  { href: '/', label: 'Home' },
   { href: '/our-story', label: 'Our Story' },
   { href: '/wedding-party', label: 'Wedding Party' },
   { href: '/weekend', label: 'Weekend' },
@@ -239,10 +276,37 @@ export default function HomePage() {
           </div>
         </section>
 
+        <section className="rounded-2xl border border-stone bg-ivory/85 p-6 shadow-[0_10px_30px_rgba(58,53,48,0.05)]">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-mauve">FAQs</p>
+          <div className="mt-4 space-y-4">
+            {site.travel.faq.map((item) => (
+              <article key={item.question} className="rounded-xl border border-stone/75 bg-ivory/80 p-4">
+                <h2 className="font-heading text-xl font-light text-charcoal">{item.question}</h2>
+                <p className="mt-2 text-sm leading-7 text-charcoal/85">{item.answer}</p>
+                {'linkHref' in item && item.linkHref ? (
+                  <Link
+                    href={item.linkHref}
+                    className="mt-2 inline-flex text-xs uppercase tracking-[0.2em] text-mauve underline underline-offset-4"
+                  >
+                    {'linkLabel' in item && item.linkLabel ? item.linkLabel : 'Read more'}
+                  </Link>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        </section>
+
         <div className="space-y-3 pb-2 text-center">
           <p className="text-sm text-muted">
             Any issues? Contact Rob or Alannah.
           </p>
+          <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[10px] uppercase tracking-[0.2em] text-muted">
+            {footerNavItems.map((item) => (
+              <Link key={item.href} href={item.href} className="no-underline hover:text-mauve hover:underline">
+                {item.label}
+              </Link>
+            ))}
+          </nav>
           <div className="flex justify-center">
             <Image
               src="/assets/heart-transparent.png"

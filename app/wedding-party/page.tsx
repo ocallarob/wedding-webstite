@@ -2,14 +2,14 @@ import { site } from '../../src/content/site';
 import Image from 'next/image';
 
 const partyPhotos: Record<string, string> = {
-  'Caoimhe Leonard': '/photos/ar-monogram-192.png',
-  'Caragh Leonard': '/photos/ar-monogram-180.png',
-  'Emma Horgan': '/photos/ar-monogram-64.png',
-  'Claire McBride': '/photos/ar-monogram-32.png',
-  'Dan Hindle': '/photos/ar-monogram-white-192.png',
-  'Dean Madden': '/photos/ar-monogram-white-180.png',
-  'Richie Bennett': '/photos/ar-monogram-white-64.png',
-  'Ruairi Leonard': '/photos/ar-monogram-white-32.png',
+  'Caoimhe Leonard': '/photos/1.svg',
+  'Caragh Leonard': '/photos/2.svg',
+  'Emma Horgan': '/photos/3.svg',
+  'Claire McBride': '/photos/4.svg',
+  'Dan Hindle': '/photos/5.svg',
+  'Dean Madden': '/photos/6.svg',
+  'Richie Bennett': '/photos/7.svg',
+  'Ruairi Leonard': '/photos/8.svg',
 };
 
 type PartyMember = {
@@ -30,7 +30,7 @@ const mobilePartyOrder = [
 ];
 
 function MemberCard({ member, reversed }: { member: PartyMember; reversed: boolean }) {
-  const photoSrc = partyPhotos[member.name] ?? '/photos/monogram.png';
+  const photoSrc = partyPhotos[member.name] ?? '/photos/9.svg';
   return (
     <article className="min-h-[210px] rounded-xl border border-stone/70 bg-ivory/80 p-4">
       <div className={`flex items-start gap-4 ${reversed ? 'flex-row-reverse' : ''}`}>

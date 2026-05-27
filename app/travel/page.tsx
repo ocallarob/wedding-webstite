@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import Link from 'next/link';
 import { site } from '../../src/content/site';
 
 export default function TravelPage() {
@@ -21,18 +22,18 @@ export default function TravelPage() {
         <div className="grid gap-6 lg:grid-cols-2">
           <section className="rounded-2xl border border-stone bg-ivory/85 p-6 shadow-[0_10px_30px_rgba(58,53,48,0.05)]">
             <p className="text-[11px] uppercase tracking-[0.24em] text-mauve">Getting There</p>
-            <ul className="mt-4 space-y-3 text-sm leading-7 text-charcoal/90">
+            <ul className="mt-4 list-disc space-y-2 pl-5 text-sm leading-7 text-charcoal/90 marker:text-mauve/70">
               {site.travel.gettingThere.map((item) => (
-                <li key={item} className="rounded-xl border border-stone/75 bg-ivory/80 px-4 py-3">{item}</li>
+                <li key={item}>{item}</li>
               ))}
             </ul>
           </section>
 
           <section className="rounded-2xl border border-stone bg-ivory/85 p-6 shadow-[0_10px_30px_rgba(58,53,48,0.05)]">
             <p className="text-[11px] uppercase tracking-[0.24em] text-mauve">Taxi Contacts</p>
-            <ul className="mt-4 space-y-3 text-sm leading-7 text-charcoal/90">
+            <ul className="mt-4 list-disc space-y-2 pl-5 text-sm leading-7 text-charcoal/90 marker:text-mauve/70">
               {site.travel.taxiContacts.map((item) => (
-                <li key={item} className="rounded-xl border border-stone/75 bg-ivory/80 px-4 py-3">{item}</li>
+                <li key={item}>{item}</li>
               ))}
             </ul>
           </section>
@@ -50,6 +51,16 @@ export default function TravelPage() {
                 <h2 className="font-heading text-xl font-light text-charcoal">{stay.name}</h2>
                 <p className="mt-2 text-xs uppercase tracking-[0.2em] text-muted">{stay.distance} • {stay.price}</p>
                 <p className="mt-2 text-sm leading-7 text-charcoal/85">{stay.notes}</p>
+                {stay.link ? (
+                  <a
+                    href={stay.link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 inline-flex text-xs uppercase tracking-[0.2em] text-mauve underline underline-offset-4"
+                  >
+                    Visit website
+                  </a>
+                ) : null}
               </article>
             ))}
           </div>
@@ -60,8 +71,30 @@ export default function TravelPage() {
           <div className="mt-4 space-y-4">
             {site.travel.areaRecommendations.map((spot) => (
               <article key={spot.name} className="rounded-xl border border-stone/75 bg-ivory/80 p-4">
-                <h2 className="font-heading text-xl font-light text-charcoal">{spot.name}</h2>
-                <p className="mt-2 text-sm leading-7 text-charcoal/85">{spot.detail}</p>
+                <div className="flex items-start gap-3">
+                  {'image' in spot && spot.image ? (
+                    <img
+                      src={spot.image}
+                      alt={spot.name}
+                      className="h-16 w-16 shrink-0 rounded-md object-cover"
+                      loading="lazy"
+                    />
+                  ) : null}
+                  <div>
+                    <h2 className="font-heading text-xl font-light text-charcoal">{spot.name}</h2>
+                    <p className="mt-2 text-sm leading-7 text-charcoal/85">{spot.detail}</p>
+                    {'link' in spot && spot.link ? (
+                      <a
+                        href={spot.link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-3 inline-flex text-xs uppercase tracking-[0.2em] text-mauve underline underline-offset-4"
+                      >
+                        Learn more
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
               </article>
             ))}
           </div>
@@ -74,6 +107,14 @@ export default function TravelPage() {
               <article key={item.question} className="rounded-xl border border-stone/75 bg-ivory/80 p-4">
                 <h2 className="font-heading text-xl font-light text-charcoal">{item.question}</h2>
                 <p className="mt-2 text-sm leading-7 text-charcoal/85">{item.answer}</p>
+                {'linkHref' in item && item.linkHref ? (
+                  <Link
+                    href={item.linkHref}
+                    className="mt-2 inline-flex text-xs uppercase tracking-[0.2em] text-mauve underline underline-offset-4"
+                  >
+                    {'linkLabel' in item && item.linkLabel ? item.linkLabel : 'Read more'}
+                  </Link>
+                ) : null}
               </article>
             ))}
           </div>

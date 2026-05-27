@@ -1,6 +1,9 @@
 import Image from 'next/image';
 import { site } from '../../src/content/site';
 
+const storyPlaceholders = ['/photos/1.svg', '/photos/2.svg', '/photos/3.svg', '/photos/4.svg', '/photos/5.svg', '/photos/6.svg'] as const;
+const timelineYears = ['2020', '2021', '2022', '2022-2024', '2024'] as const;
+
 export default function OurStoryPage() {
   return (
     <div className="relative overflow-hidden bg-ivory">
@@ -20,31 +23,31 @@ export default function OurStoryPage() {
 
         <section className="grid gap-8 rounded-2xl border border-stone bg-ivory/85 p-6 shadow-[0_10px_30px_rgba(58,53,48,0.05)] md:grid-cols-[1.1fr_0.9fr] md:p-8">
           <div className="space-y-4">
-            <h2 className="font-heading text-3xl text-mauve">How We Met</h2>
-            <ol className="relative ml-1 space-y-4 border-l border-stone/80 pl-6">
+            <h2 className="font-heading text-3xl font-light tracking-[0.04em] text-mauve">Alannah & Rob</h2>
+            <ol className="relative ml-1 space-y-6 border-l border-stone/80 pl-7">
               {site.ourStoryTimeline.map((item, index) => (
-                <li key={item} className="relative">
+                <li key={item} className="relative pb-1">
                   <span
                     aria-hidden
-                    className="absolute -left-[31px] top-5 h-2.5 w-2.5 rounded-full border border-mauve/70 bg-ivory"
+                    className="absolute -left-[34px] top-1 h-3 w-3 rounded-full border border-mauve/80 bg-ivory shadow-[0_0_0_4px_rgba(255,250,245,0.95)]"
                   />
-                  <div className="rounded-xl border border-stone/70 bg-ivory/75 px-4 py-3">
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-mauve/85">
-                      {index === 0 ? '2020' : index === 1 ? '2021' : index === 2 ? '2022' : index === 3 ? '2022-2024' : '2024'}
-                    </p>
-                    <p className="mt-1 text-sm leading-7 text-charcoal">{item}</p>
-                  </div>
+                  <p className="text-xs uppercase tracking-[0.24em] text-mauve/90">
+                    {timelineYears[index] ?? ''}
+                  </p>
+                  <p className="mt-2 max-w-[34ch] text-sm leading-7 text-charcoal/95">
+                    {item}
+                  </p>
                 </li>
               ))}
             </ol>
           </div>
-          <div className="overflow-hidden rounded-xl border border-stone/70 bg-ivory/70 p-3">
+          <div className="overflow-hidden rounded-xl bg-ivory/70">
             <Image
               src="/photos/dogs-bay.png"
               alt="Sketch of Dog's Bay"
               width={1536}
               height={2048}
-              className="h-auto w-full rounded-lg object-cover"
+              className="h-auto w-full rounded-xl border border-stone/65 object-cover"
             />
           </div>
         </section>
@@ -52,26 +55,16 @@ export default function OurStoryPage() {
         <section className="rounded-2xl border border-stone bg-ivory/85 p-6 shadow-[0_10px_30px_rgba(58,53,48,0.05)] md:p-8">
           <h2 className="font-heading text-3xl text-mauve">Photos</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {site.galleryImages.slice(0, 6).map((imageSrc, index) => (
+            {storyPlaceholders.map((imageSrc, index) => (
               <div key={imageSrc} className="overflow-hidden rounded-xl border border-stone/75 bg-ivory/80 p-2">
-                {imageSrc.endsWith('.svg') ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={imageSrc}
-                    alt={`Our story photo ${index + 1}`}
-                    className="h-52 w-full rounded-lg object-contain"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                ) : (
-                  <Image
-                    src={imageSrc}
-                    alt={`Our story photo ${index + 1}`}
-                    width={1200}
-                    height={900}
-                    className="h-52 w-full rounded-lg object-cover"
-                  />
-                )}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imageSrc}
+                  alt={`Our story placeholder ${index + 1}`}
+                  className="h-52 w-full rounded-lg object-contain"
+                  loading="lazy"
+                  decoding="async"
+                />
               </div>
             ))}
           </div>
