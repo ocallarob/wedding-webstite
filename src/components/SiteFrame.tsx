@@ -49,10 +49,10 @@ export function SiteFrame({ coupleNames, dateText, locationText, children }: Pro
               <DateEasterEgg defaultText={dateText} targetDate={site.countdownDateTime} className="inline" /> • {locationText}
             </div>
             <Image
-              src="/assets/heart.svg"
+              src="/assets/heart-transparent.png"
               alt="Heart motif"
-              width={54}
-              height={54}
+              width={88}
+              height={81}
               className="mt-2 h-auto w-8 opacity-85"
             />
           </div>

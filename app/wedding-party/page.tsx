@@ -2,14 +2,14 @@ import { site } from '../../src/content/site';
 import Image from 'next/image';
 
 const partyPhotos: Record<string, string> = {
-  'Caoimhe Leonard': '/photos/1.svg',
-  'Caragh Leonard': '/photos/2.svg',
-  'Emma Horgan': '/photos/3.svg',
-  'Claire McBride': '/photos/4.svg',
-  'Dan Hindle': '/photos/5.svg',
-  'Dean Madden': '/photos/6.svg',
-  'Richie Bennett': '/photos/7.svg',
-  'Ruairi Leonard': '/photos/8.svg',
+  'Caoimhe Leonard': '/photos/ar-monogram-192.png',
+  'Caragh Leonard': '/photos/ar-monogram-180.png',
+  'Emma Horgan': '/photos/ar-monogram-64.png',
+  'Claire McBride': '/photos/ar-monogram-32.png',
+  'Dan Hindle': '/photos/ar-monogram-white-192.png',
+  'Dean Madden': '/photos/ar-monogram-white-180.png',
+  'Richie Bennett': '/photos/ar-monogram-white-64.png',
+  'Ruairi Leonard': '/photos/ar-monogram-white-32.png',
 };
 
 type PartyMember = {
@@ -30,16 +30,18 @@ const mobilePartyOrder = [
 ];
 
 function MemberCard({ member, reversed }: { member: PartyMember; reversed: boolean }) {
+  const photoSrc = partyPhotos[member.name] ?? '/photos/monogram.png';
   return (
     <article className="min-h-[210px] rounded-xl border border-stone/70 bg-ivory/80 p-4">
       <div className={`flex items-start gap-4 ${reversed ? 'flex-row-reverse' : ''}`}>
         <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border border-stone/70 bg-ivory">
-          <Image
-            src={partyPhotos[member.name] ?? '/photos/9.svg'}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={photoSrc}
             alt={`${member.name} profile`}
-            width={160}
-            height={160}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-contain"
+            loading="lazy"
+            decoding="async"
           />
         </div>
         <div className={`flex-1 ${reversed ? 'text-left' : 'text-right'}`}>
@@ -67,7 +69,11 @@ export default function WeddingPartyPage() {
       <div className="relative mx-auto max-w-6xl space-y-10 px-5 pb-20 pt-[84px]">
         <header className="rounded-3xl border border-stone/80 bg-ivory/80 px-6 py-10 text-center shadow-[0_18px_50px_rgba(58,53,48,0.07)] backdrop-blur-sm sm:px-10">
           <p className="text-xs uppercase tracking-[0.26em] text-mauve">Wedding Party</p>
-          <h1 className="mt-2 font-heading text-4xl font-light tracking-[0.05em] text-charcoal sm:text-5xl">The People Beside Us</h1>
+          <div className="mt-2 flex items-center gap-4 sm:gap-6">
+            <Image src="/assets/divider-line-transparent.png" alt="" aria-hidden width={388} height={50} className="h-auto w-20 flex-1 opacity-70 sm:w-28" />
+            <h1 className="font-heading text-4xl font-light tracking-[0.05em] text-charcoal sm:text-5xl">The People Beside Us</h1>
+            <Image src="/assets/divider-line-transparent.png" alt="" aria-hidden width={388} height={50} className="h-auto w-20 flex-1 opacity-70 sm:w-28" />
+          </div>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-muted">
             We are so lucky to be surrounded by family and friends we love.
           </p>

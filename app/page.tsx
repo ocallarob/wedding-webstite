@@ -72,13 +72,12 @@ export default function HomePage() {
             </Link>
             <MobileHomeMenu />
             <HomeHeroNav />
-            <Image
-              src="/assets/devenish-tower.svg"
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/assets/devenish-tower-rsvp.png"
               alt=""
               aria-hidden
-              width={170}
-              height={120}
-              className="h-auto w-20 shrink-0 opacity-70 md:w-[120px]"
+              className="h-auto w-20 shrink-0 opacity-75 md:w-[120px]"
             />
           </div>
           <div className="space-y-4">
@@ -177,12 +176,11 @@ export default function HomePage() {
         </section>
 
         <section className="relative space-y-6">
-          <Image
-            src="/assets/menlo-castle.svg"
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/assets/menlo-castle-rsvp.png"
             alt=""
             aria-hidden
-            width={170}
-            height={120}
             className="pointer-events-none absolute left-1/2 top-0 h-auto w-24 -translate-x-1/2 opacity-70 md:left-5 md:top-[-0.75rem] md:w-[120px] md:translate-x-0"
           />
           <div className="space-y-2 pt-20 text-center md:pt-0">
@@ -247,11 +245,11 @@ export default function HomePage() {
           </p>
           <div className="flex justify-center">
             <Image
-              src="/assets/heart.svg"
+              src="/assets/heart-transparent.png"
               alt=""
               aria-hidden
               width={88}
-              height={88}
+              height={81}
               className="h-auto w-12 opacity-85"
             />
           </div>
@@ -263,7 +261,7 @@ export default function HomePage() {
 
 function HomeHeroNav() {
   return (
-    <nav className="hidden flex-1 flex-wrap items-center justify-center gap-x-7 gap-y-2 text-[11px] uppercase tracking-[0.24em] text-muted sm:flex sm:gap-x-10">
+    <nav className="hidden flex-1 flex-wrap items-center justify-center gap-x-7 gap-y-2 text-[11px] uppercase tracking-[0.24em] text-muted lg:flex lg:gap-x-10">
       {homeNavItems.map((item) => (
         <Link
           key={item.href}
@@ -279,7 +277,7 @@ function HomeHeroNav() {
 
 function MobileHomeMenu() {
   return (
-    <details className="group relative sm:hidden">
+    <details className="group relative lg:hidden">
       <summary className="list-none rounded-full border border-stone/80 px-4 py-1 text-[10px] uppercase tracking-[0.22em] text-muted [&::-webkit-details-marker]:hidden">
         Menu
       </summary>
@@ -302,11 +300,11 @@ function WaveDivider() {
   return (
     <div aria-hidden className="py-2">
       <Image
-        src="/assets/divider-line.svg"
+        src="/assets/divider-line-transparent.png"
         alt=""
-        width={900}
-        height={60}
-        className="h-auto w-full"
+        width={388}
+        height={50}
+        className="h-auto w-full opacity-75"
       />
     </div>
   );

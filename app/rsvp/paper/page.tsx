@@ -35,9 +35,7 @@ export default async function PaperRsvpPage({ searchParams }: Props) {
           <p className="mt-3 font-script text-[28px] leading-none text-[#95ad92]">le grá agus le háthas</p>
           <h1 className="mt-3 font-heading text-4xl font-medium text-[#9b7b8d]">RSVP</h1>
           <p className="mt-2 font-script text-[28px] leading-none text-[#d99d9d]">paper invite lookup</p>
-          <div className="mx-auto mt-4 max-w-[360px]">
-            <Image src="/assets/divider-line.svg" alt="" width={430} height={20} className="h-auto w-full opacity-70" />
-          </div>
+          <div className="mx-auto mt-4 h-px max-w-[360px] bg-gradient-to-r from-transparent via-stone/70 to-transparent" />
           <p className="mt-4 text-sm text-muted">{site.rsvpDeadline}</p>
         </div>
       </header>
