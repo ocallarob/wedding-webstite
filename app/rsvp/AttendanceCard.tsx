@@ -3,8 +3,8 @@
 type Day = 1 | 2;
 
 const DAY_INFO: Record<Day, { date: string; label: string; detail: string }> = {
-  1: { date: 'Friday, 28 August', label: 'Ceremony & Reception', detail: "St. Mary's Church\nLough Erne Resort" },
-  2: { date: 'Saturday, 29 August', label: 'Afternoon Drinks', detail: "Charlie's Bar, Enniskillen" },
+  1: { date: 'Friday, 28 August', label: 'Mass, Reception & Evening', detail: "St. Marys Church, Arney\nLough Erne Resort" },
+  2: { date: 'Saturday, 29 August', label: 'Day Two', detail: "Charlie's Bar, Enniskillen" },
 };
 
 type Props = {

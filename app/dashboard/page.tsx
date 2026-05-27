@@ -20,6 +20,7 @@ type Row = {
   id: string;
   label: string | null;
   contact_email: string;
+  invite_token: string;
   is_paper_invite: boolean;
   invited_at: string | null;
   invite_failed_count: number;
@@ -117,6 +118,7 @@ export default async function DashboardPage({ searchParams }: Props) {
       h.id,
       h.label,
       h.contact_email,
+      h.invite_token,
       h.is_paper_invite,
       h.invited_at,
       h.invite_failed_count,
@@ -197,7 +199,7 @@ export default async function DashboardPage({ searchParams }: Props) {
         <table className="w-full text-sm">
           <thead className="bg-stone/40 text-left">
             <tr>
-              {['Household', 'Contact Email', 'Paper Invite', 'Status', 'Send Status', 'Members', 'Song', 'Message'].map((h) => (
+              {['Household', 'Contact Email', 'Invite Code', 'Paper Invite', 'Status', 'Send Status', 'Members', 'Song', 'Message'].map((h) => (
                 <th key={h} className="px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-muted font-normal whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -207,6 +209,14 @@ export default async function DashboardPage({ searchParams }: Props) {
               <tr key={row.id} className="bg-ivory/60 hover:bg-stone/20 transition-colors align-top">
                 <td className="px-4 py-3 font-medium text-charcoal whitespace-nowrap">{householdName(row)}</td>
                 <td className="px-4 py-3 text-muted">{row.contact_email}</td>
+                <td className="px-4 py-3 text-muted whitespace-nowrap">
+                  <details>
+                    <summary className="cursor-pointer text-xs text-mauve underline-offset-4 hover:underline">Show code</summary>
+                    <code className="mt-2 inline-block rounded border border-stone bg-white/80 px-2 py-1 text-[11px] text-charcoal">
+                      {row.invite_token}
+                    </code>
+                  </details>
+                </td>
                 <td className="px-4 py-3 text-muted whitespace-nowrap">{row.is_paper_invite ? 'Yes' : 'No'}</td>
                 <td className="px-4 py-3 text-muted whitespace-nowrap">{status(row)}</td>
                 <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">{sendStatus(row)}</td>
@@ -221,7 +231,7 @@ export default async function DashboardPage({ searchParams }: Props) {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-muted">No households yet.</td>
+                <td colSpan={9} className="px-4 py-10 text-center text-muted">No households yet.</td>
               </tr>
             )}
           </tbody>

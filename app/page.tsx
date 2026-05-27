@@ -7,7 +7,7 @@ import { DateEasterEgg } from '../src/components/DateEasterEgg';
 const quickInfo = [
   { label: 'Date', value: site.dateText },
   { label: 'Location', value: 'Lough Erne Resort, Co. Fermanagh', href: 'https://www.lougherneresort.com/' },
-  { label: 'RSVP', value: 'Coming soon' },
+  { label: 'RSVP', value: 'By 28 June 2026' },
 ];
 
 type WeekendEvent = {
@@ -34,7 +34,62 @@ const weekendSchedule: WeekendDay[] = site.weekendSchedule.map((day) => ({
   })),
 }));
 
+const homeWeekendCards: WeekendDay[] = [
+  {
+    title: 'Day 1 • Ceremony',
+    date: 'Friday Afternoon',
+    events: [
+      {
+        time: '1:00 PM',
+        title: 'Wedding Mass',
+        location: "St. Mary's Church, Arney",
+        locationUrl:
+          'https://www.google.com/maps/place/St.+Mary%E2%80%99s+Catholic+Church/@54.2911654,-7.7823194,16823m/data=!3m1!1e3!4m10!1m2!2m1!1sSt+Marys+Church+Cleenish+Arney+Enniskillen+BT92+2DL!3m6!1s0x485e441da76136fd:0xe454921a3932c4f7!8m2!3d54.2911654!4d-7.6704973!15sCjNTdCBNYXJ5cyBDaHVyY2ggQ2xlZW5pc2ggQXJuZXkgRW5uaXNraWxsZW4gQlQ5MiAyREySAQ9jYXRob2xpY19jaHVyY2jgAQA!16s%2Fg%2F11g8xgfn9n?entry=ttu&g_ep=EgoyMDI2MDUyNS4wIKXMDSoASAFQAw%3D%3D',
+      },
+    ],
+  },
+  {
+    title: 'Day 1 • Reception',
+    date: 'Friday Evening',
+    events: [
+      {
+        time: '3:00 PM',
+        title: 'Cocktails & Canapés',
+        location: 'The Ross Foyer, Lough Erne Resort',
+        locationUrl: 'https://www.lougherneresort.com/',
+      },
+      {
+        time: '6:00 PM',
+        title: 'Reception',
+        location: 'The Ross Suite, Lough Erne Resort',
+        locationUrl: 'https://www.lougherneresort.com/',
+      },
+    ],
+  },
+  {
+    title: 'Day 2 • Drinks & Music',
+    date: 'Saturday',
+    events: [
+      {
+        time: '3:00 PM',
+        title: 'Afternoon Drinks',
+        location: "Charlie's Bar",
+        locationUrl: 'https://www.google.com/maps/search/?api=1&query=Charlie%27s+Bar+1+Church+St+Enniskillen+BT74+7DW',
+      },
+    ],
+  },
+];
+
 const homeNavItems = [
+  { href: '/our-story', label: 'Our Story' },
+  { href: '/wedding-party', label: 'Wedding Party' },
+  { href: '/weekend', label: 'Weekend' },
+  { href: '/travel', label: 'Travel' },
+  { href: '/gallery', label: 'Gallery' },
+];
+
+const footerNavItems = [
+  { href: '/', label: 'Home' },
   { href: '/our-story', label: 'Our Story' },
   { href: '/wedding-party', label: 'Wedding Party' },
   { href: '/weekend', label: 'Weekend' },
@@ -52,14 +107,14 @@ export default function HomePage() {
             <Link href="/" className="block w-fit shrink-0 no-underline" aria-label="Home">
               <Monogram size={58} />
             </Link>
+            <MobileHomeMenu />
             <HomeHeroNav />
-            <Image
-              src="/assets/devenish-tower.svg"
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/assets/devenish-tower-rsvp.png"
               alt=""
               aria-hidden
-              width={170}
-              height={120}
-              className="h-auto w-20 shrink-0 opacity-70 md:w-[120px]"
+              className="h-auto w-20 shrink-0 opacity-75 md:w-[120px]"
             />
           </div>
           <div className="space-y-4">
@@ -67,10 +122,10 @@ export default function HomePage() {
               <DateEasterEgg
                 defaultText="28 August 2026"
                 targetDate={site.countdownDateTime}
-                className="block tracking-[0.22em] sm:inline sm:tracking-[0.3em]"
+                className="mx-auto block w-fit text-center tracking-[0.22em] sm:mx-0 sm:inline sm:w-auto sm:text-left sm:tracking-[0.3em]"
               />
-              <span className="block py-1 tracking-[0.12em] sm:inline sm:px-2 sm:py-0 sm:tracking-[0.3em]">◇</span>
-              <span className="block tracking-[0.22em] sm:inline sm:tracking-[0.3em]">Lough Erne Resort</span>
+              <span className="block py-1 text-center tracking-[0.2em] sm:inline sm:px-2 sm:py-0 sm:tracking-[0.3em]">◇</span>
+              <span className="block text-center tracking-[0.22em] sm:inline sm:tracking-[0.3em]">Lough Erne Resort</span>
             </p>
             <h1 className="font-heading text-5xl font-light leading-tight tracking-[0.1em] text-mauve sm:text-6xl">
               {site.coupleNames}
@@ -80,6 +135,7 @@ export default function HomePage() {
               translation="Welcome"
               className="text-[1.8rem] tracking-[0.01em] sm:text-[2.2rem]"
             />
+            <p className="mx-auto max-w-2xl text-sm leading-7 text-muted">{site.welcomeMessage}</p>
           </div>
           <div id="header-sentinel" className="h-px w-full" />
           <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-stretch">
@@ -96,7 +152,7 @@ export default function HomePage() {
             </div>
             <div className="flex flex-col justify-between gap-5 rounded-2xl border border-stone bg-ivory/70 p-6 text-left">
               <p className="font-heading text-3xl font-light leading-tight text-charcoal">
-                We are so excited to welcome you to the Lough Erne for a weekend full of love, laughter, and lasting memories.
+                We are so excited to have you as part of our day.
               </p>
               <p className="text-sm leading-7 text-muted">
                 From Galway to Fermanagh, this day carries both of our families with it, and we cannot wait to celebrate
@@ -141,8 +197,8 @@ export default function HomePage() {
               Galway to Fermanagh
             </h2>
             <p className="text-base leading-8 text-muted">
-              We met in Galway on 14 August 2020, got engaged on Dog&apos;s Bay in Connemara in 2024, and now we
-              cannot wait to celebrate with you in one of our favourite places on the island.
+              We met on 14 August 2020 on the slip in Galway, had a year of long distance in 2021, moved to London in January
+              2022, and got engaged on Dog&apos;s Bay on 22 August 2024.
             </p>
             <IrishPhrase
               phrase="le chéile"
@@ -157,12 +213,11 @@ export default function HomePage() {
         </section>
 
         <section className="relative space-y-6">
-          <Image
-            src="/assets/menlo-castle.svg"
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/assets/menlo-castle-rsvp.png"
             alt=""
             aria-hidden
-            width={170}
-            height={120}
             className="pointer-events-none absolute left-1/2 top-0 h-auto w-24 -translate-x-1/2 opacity-70 md:left-5 md:top-[-0.75rem] md:w-[120px] md:translate-x-0"
           />
           <div className="space-y-2 pt-20 text-center md:pt-0">
@@ -186,7 +241,7 @@ export default function HomePage() {
             </span>
           </div>
           <div className="grid gap-5 md:grid-cols-3">
-            {weekendSchedule.slice(0, 3).map((day) => (
+            {homeWeekendCards.map((day) => (
               (() => {
                 const panelUrl = day.events.find((event) => event.locationUrl)?.locationUrl;
                 const PanelTag = panelUrl ? 'a' : 'div';
@@ -221,17 +276,44 @@ export default function HomePage() {
           </div>
         </section>
 
+        <section className="rounded-2xl border border-stone bg-ivory/85 p-6 shadow-[0_10px_30px_rgba(58,53,48,0.05)]">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-mauve">FAQs</p>
+          <div className="mt-4 space-y-4">
+            {site.travel.faq.map((item) => (
+              <article key={item.question} className="rounded-xl border border-stone/75 bg-ivory/80 p-4">
+                <h2 className="font-heading text-xl font-light text-charcoal">{item.question}</h2>
+                <p className="mt-2 text-sm leading-7 text-charcoal/85">{item.answer}</p>
+                {'linkHref' in item && item.linkHref ? (
+                  <Link
+                    href={item.linkHref}
+                    className="mt-2 inline-flex text-xs uppercase tracking-[0.2em] text-mauve underline underline-offset-4"
+                  >
+                    {'linkLabel' in item && item.linkLabel ? item.linkLabel : 'Read more'}
+                  </Link>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        </section>
+
         <div className="space-y-3 pb-2 text-center">
           <p className="text-sm text-muted">
             Any issues? Contact Rob or Alannah.
           </p>
+          <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[10px] uppercase tracking-[0.2em] text-muted">
+            {footerNavItems.map((item) => (
+              <Link key={item.href} href={item.href} className="no-underline hover:text-mauve hover:underline">
+                {item.label}
+              </Link>
+            ))}
+          </nav>
           <div className="flex justify-center">
             <Image
-              src="/assets/heart.svg"
+              src="/assets/heart-transparent.png"
               alt=""
               aria-hidden
               width={88}
-              height={88}
+              height={81}
               className="h-auto w-12 opacity-85"
             />
           </div>
@@ -243,7 +325,7 @@ export default function HomePage() {
 
 function HomeHeroNav() {
   return (
-    <nav className="flex flex-1 flex-wrap items-center justify-center gap-x-7 gap-y-2 text-[11px] uppercase tracking-[0.24em] text-muted sm:gap-x-10">
+    <nav className="hidden flex-1 flex-wrap items-center justify-center gap-x-7 gap-y-2 text-[11px] uppercase tracking-[0.24em] text-muted lg:flex lg:gap-x-10">
       {homeNavItems.map((item) => (
         <Link
           key={item.href}
@@ -257,15 +339,36 @@ function HomeHeroNav() {
   );
 }
 
+function MobileHomeMenu() {
+  return (
+    <details className="group relative lg:hidden">
+      <summary className="list-none rounded-full border border-stone/80 px-4 py-1 text-[10px] uppercase tracking-[0.22em] text-muted [&::-webkit-details-marker]:hidden">
+        Menu
+      </summary>
+      <nav className="absolute left-1/2 top-[calc(100%+8px)] z-30 w-44 -translate-x-1/2 rounded-xl border border-stone bg-ivory/95 p-2 shadow-[0_10px_30px_rgba(58,53,48,0.12)] backdrop-blur-sm">
+        {homeNavItems.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="block rounded px-2 py-2 text-center text-[10px] uppercase tracking-[0.22em] text-muted no-underline hover:bg-mauve/10 hover:text-mauve"
+          >
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+    </details>
+  );
+}
+
 function WaveDivider() {
   return (
     <div aria-hidden className="py-2">
       <Image
-        src="/assets/divider-line.svg"
+        src="/assets/divider-line-transparent.png"
         alt=""
-        width={900}
-        height={60}
-        className="h-auto w-full"
+        width={388}
+        height={50}
+        className="h-auto w-full opacity-75"
       />
     </div>
   );

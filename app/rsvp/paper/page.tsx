@@ -25,7 +25,7 @@ export default async function PaperRsvpPage({ searchParams }: Props) {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-5 pt-[72px] pb-20 space-y-8">
+    <div className="mx-auto max-w-2xl px-5 pt-[96px] pb-20 space-y-8">
       <header className="rounded-3xl border border-stone/80 bg-[#fffdf9] p-2 shadow-[0_22px_44px_rgba(89,70,80,0.08)]">
         <div className="rounded-[1.35rem] border border-blush/80 bg-gradient-to-b from-[#fffdf9] to-[#fff7f5] px-7 py-7 text-center">
           <div className="flex items-start justify-between">
@@ -35,9 +35,14 @@ export default async function PaperRsvpPage({ searchParams }: Props) {
           <p className="mt-3 font-script text-[28px] leading-none text-[#95ad92]">le grá agus le háthas</p>
           <h1 className="mt-3 font-heading text-4xl font-medium text-[#9b7b8d]">RSVP</h1>
           <p className="mt-2 font-script text-[28px] leading-none text-[#d99d9d]">paper invite lookup</p>
-          <div className="mx-auto mt-4 max-w-[360px]">
-            <Image src="/assets/divider-line.svg" alt="" width={430} height={20} className="h-auto w-full opacity-70" />
-          </div>
+          <Image
+            src="/assets/divider-line-transparent.png"
+            alt=""
+            aria-hidden
+            width={388}
+            height={50}
+            className="mx-auto mt-3 h-auto w-44 opacity-65"
+          />
           <p className="mt-4 text-sm text-muted">{site.rsvpDeadline}</p>
         </div>
       </header>

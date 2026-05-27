@@ -6,7 +6,7 @@ const MONOGRAM_HEIGHT = 256;
 export function Monogram({ size = 40, className }: { size?: number; className?: string }) {
   return (
     <Image
-      src="/assets/monogram.svg"
+      src="/assets/monogram-transparent.png"
       alt="A and R monogram"
       width={MONOGRAM_WIDTH}
       height={MONOGRAM_HEIGHT}

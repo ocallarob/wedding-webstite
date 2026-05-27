@@ -40,9 +40,7 @@ export function buildInviteEmailHtml(displayName: string, rsvpUrl: string, baseU
       <p style="margin:1px 0 0;font-family:'Charmonman','Brush Script MT','Segoe Script',cursive;font-size:21px;line-height:1.01;color:#dfc1c6;font-weight:400">
         our wedding weekend
       </p>
-      <div style="margin:8px auto 5px;max-width:430px">
-        <img src="${assetBase}/assets/divider-line.svg" width="430" alt="" style="display:block;width:100%;height:auto;border:0;outline:none;text-decoration:none;opacity:0.75">
-      </div>
+      <div style="margin:8px auto 5px;max-width:430px;height:1px;background:#d9d2c9;opacity:0.75"></div>
       <p style="margin:14px 0 0;font-family:'Jost',Arial,sans-serif;font-size:11px;line-height:1.2;letter-spacing:0.28em;text-transform:uppercase;color:#7a756f">
         Friday, 28 August 2026
       </p>

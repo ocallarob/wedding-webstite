@@ -127,7 +127,7 @@ export function RsvpForm({ token, householdLabel, initialMembers, alreadyRsvpd, 
       <div className="px-7 pt-8 pb-6 space-y-4 text-center">
         <p className="text-[11px] uppercase tracking-[0.3em] text-mauve">RSVP Card</p>
         <div className="flex items-center justify-between gap-4">
-          <p className="font-heading text-2xl font-light text-charcoal truncate">{title}</p>
+          <p className="min-w-0 pr-2 font-heading text-2xl font-light leading-tight text-charcoal break-words">{title}</p>
           <StepIndicator current={step} total={totalSteps} />
         </div>
         {loadedExisting && (
