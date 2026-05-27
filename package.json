@@ -11,7 +11,8 @@
     "test": "tsx --test tests/**/*.test.ts",
     "db:migrate": "tsx --env-file=.env.local scripts/migrate.ts",
     "db:seed": "tsx --env-file=.env.local scripts/seed.ts",
-    "db:import-households": "tsx --env-file=.env.local scripts/import-households.ts"
+    "db:import-households": "tsx --env-file=.env.local scripts/import-households.ts",
+    "db:append-households": "tsx --env-file=.env.local scripts/import-households.ts private/households-append.csv --apply --insert-only"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

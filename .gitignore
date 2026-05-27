@@ -6,3 +6,4 @@ npm-debug.log*
 .vercel
 out
 public/email-preview.html
+private/

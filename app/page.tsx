@@ -144,7 +144,7 @@ export default function HomePage() {
                 src={site.heroImage}
                 alt="Rob and Alannah in warm evening light"
                 fill
-                className="object-cover object-[50%_68%]"
+                className="object-cover object-[52%_74%] md:object-[54%_82%]"
                 sizes="(min-width: 1024px) 45vw, 92vw"
                 priority
               />

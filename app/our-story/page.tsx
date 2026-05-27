@@ -1,7 +1,14 @@
 import Image from 'next/image';
 import { site } from '../../src/content/site';
 
-const storyPlaceholders = ['/photos/1.svg', '/photos/2.svg', '/photos/3.svg', '/photos/4.svg', '/photos/5.svg', '/photos/6.svg'] as const;
+const storyPhotos = [
+  '/photos/couple-03.jpg',
+  '/photos/couple-10.jpg',
+  '/photos/couple-06.jpg',
+  '/photos/couple-04.jpg',
+  '/photos/couple-08.jpg',
+  '/photos/couple-11.jpg',
+] as const;
 const timelineYears = ['2020', '2021', '2022', '2022-2024', '2024'] as const;
 
 export default function OurStoryPage() {
@@ -43,11 +50,11 @@ export default function OurStoryPage() {
           </div>
           <div className="overflow-hidden rounded-xl bg-ivory/70">
             <Image
-              src="/photos/dogs-bay.png"
-              alt="Sketch of Dog's Bay"
+              src="/photos/couple-01.jpg"
+              alt="Alannah and Rob together outdoors"
               width={1536}
-              height={2048}
-              className="h-auto w-full rounded-xl border border-stone/65 object-cover"
+              height={1536}
+              className="aspect-square w-full rounded-xl border border-stone/65 object-cover object-[52%_40%]"
             />
           </div>
         </section>
@@ -55,13 +62,13 @@ export default function OurStoryPage() {
         <section className="rounded-2xl border border-stone bg-ivory/85 p-6 shadow-[0_10px_30px_rgba(58,53,48,0.05)] md:p-8">
           <h2 className="font-heading text-3xl text-mauve">Photos</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {storyPlaceholders.map((imageSrc, index) => (
+            {storyPhotos.map((imageSrc, index) => (
               <div key={imageSrc} className="overflow-hidden rounded-xl border border-stone/75 bg-ivory/80 p-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={imageSrc}
-                  alt={`Our story placeholder ${index + 1}`}
-                  className="h-52 w-full rounded-lg object-contain"
+                  alt={`Our story photo ${index + 1}`}
+                  className="aspect-[3/4] w-full rounded-lg object-cover"
                   loading="lazy"
                   decoding="async"
                 />
