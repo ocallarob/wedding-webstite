@@ -6,7 +6,7 @@ import { DateEasterEgg } from '../src/components/DateEasterEgg';
 
 const quickInfo = [
   { label: 'Date', value: site.dateText },
-  { label: 'Location', value: 'Lough Erne Resort, Co. Fermanagh', href: 'https://www.lougherneresort.com/' },
+  { label: 'Location', value: 'Lough Erne Resort, Co. Fermanagh', href: '#wedding-schedule' },
   { label: 'RSVP', value: 'By 28 June 2026' },
 ];
 
@@ -71,8 +71,8 @@ const homeWeekendCards: WeekendDay[] = [
     date: 'Saturday',
     events: [
       {
-        time: '3:00 PM',
-        title: 'Afternoon Drinks',
+        time: '4:00 PM',
+        title: 'Afternoon Drinks, Food and Dancing',
         location: "Charlie's Bar",
         locationUrl: 'https://www.google.com/maps/search/?api=1&query=Charlie%27s+Bar+1+Church+St+Enniskillen+BT74+7DW',
       },
@@ -85,7 +85,7 @@ const homeNavItems = [
   { href: '/wedding-party', label: 'Wedding Party' },
   { href: '/weekend', label: 'Weekend' },
   { href: '/travel', label: 'Travel' },
-  { href: '/gallery', label: 'Gallery' },
+  { href: '/faq', label: 'FAQ' },
 ];
 
 const footerNavItems = [
@@ -94,7 +94,7 @@ const footerNavItems = [
   { href: '/wedding-party', label: 'Wedding Party' },
   { href: '/weekend', label: 'Weekend' },
   { href: '/travel', label: 'Travel' },
-  { href: '/gallery', label: 'Gallery' },
+  { href: '/faq', label: 'FAQ' },
 ];
 
 export default function HomePage() {
@@ -135,7 +135,7 @@ export default function HomePage() {
               translation="Welcome"
               className="text-[1.8rem] tracking-[0.01em] sm:text-[2.2rem]"
             />
-            <p className="mx-auto max-w-2xl text-sm leading-7 text-muted">{site.welcomeMessage}</p>
+            {/* <p className="mx-auto max-w-2xl text-sm leading-7 text-muted">{site.welcomeMessage}</p> */}
           </div>
           <div id="header-sentinel" className="h-px w-full" />
           <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-stretch">
@@ -152,11 +152,10 @@ export default function HomePage() {
             </div>
             <div className="flex flex-col justify-between gap-5 rounded-2xl border border-stone bg-ivory/70 p-6 text-left">
               <p className="font-heading text-3xl font-light leading-tight text-charcoal">
-                We are so excited to have you as part of our day.
+                We cannot wait to celebrate with you.
               </p>
               <p className="text-sm leading-7 text-muted">
-                From Galway to Fermanagh, this day carries both of our families with it, and we cannot wait to celebrate
-                with all of you.
+                Bringing together Galway and Fermanagh, this weekend is a celebration of love, family, and everyone who means the most to us.
               </p>
               <WaveDivider />
               <div className="grid gap-3 text-sm sm:grid-cols-3 sm:text-center">
@@ -166,12 +165,14 @@ export default function HomePage() {
                     {item.href ? (
                       <a
                         href={item.href}
-                        target="_blank"
-                        rel="noreferrer"
+                        target={item.href.startsWith('#') ? undefined : '_blank'}
+                        rel={item.href.startsWith('#') ? undefined : 'noreferrer'}
                         className="mt-2 inline-flex items-center gap-1 text-sm leading-6 text-charcoal decoration-mauve/30 underline-offset-4 hover:text-mauve hover:underline"
                       >
                         {item.value}
-                        <span aria-hidden className="text-[10px] leading-none align-[0.08em]">↗︎</span>
+                        {!item.href.startsWith('#') && (
+                          <span aria-hidden className="text-[10px] leading-none align-[0.08em]">↗︎</span>
+                        )}
                       </a>
                     ) : item.label === 'Date' ? (
                       <DateEasterEgg
@@ -197,8 +198,9 @@ export default function HomePage() {
               Galway to Fermanagh
             </h2>
             <p className="text-base leading-8 text-muted">
-              We met on 14 August 2020 on the slip in Galway, had a year of long distance in 2021, moved to London in January
-              2022, and got engaged on Dog&apos;s Bay on 22 August 2024.
+              Our story began on the slip in Galway on 14 August 2020. 
+              After a year of long distance in 2021, Alannah moved to London 
+              where we began our life together, before getting engaged on Dog’s Bay on 22 August 2024.
             </p>
             <IrishPhrase
               phrase="le chéile"
@@ -212,7 +214,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="relative space-y-6">
+        <section id="wedding-schedule" className="relative scroll-mt-28 space-y-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/assets/menlo-castle-rsvp.png"

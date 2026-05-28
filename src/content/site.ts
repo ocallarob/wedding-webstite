@@ -13,18 +13,18 @@ export const site = {
   rsvpDeadline: 'Please RSVP by 28 June 2026',
   welcomeMessage: 'We are so excited to have you as part of our day.',
   galleryImages: [
-    '/photos/hero.jpg',
-    '/photos/dogs-bay.png',
-    '/photos/hero_bw.jpg',
-    '/photos/ar-monogram.png',
-    '/photos/ar-monogram-white.png',
-    '/photos/ar-monogram-192.png',
-    '/photos/ar-monogram-white-192.png',
-    '/photos/ar-monogram-180.png',
-    '/photos/ar-monogram-white-180.png',
-    '/photos/ar-monogram-64.png',
-    '/photos/ar-monogram-white-64.png',
-    '/photos/monogram.png',
+    '/photos/couple-01.jpg',
+    '/photos/couple-02.jpg',
+    '/photos/couple-03.jpg',
+    '/photos/couple-04.jpg',
+    '/photos/couple-05.jpg',
+    '/photos/couple-06.jpg',
+    '/photos/couple-07.jpg',
+    '/photos/couple-08.jpg',
+    '/photos/couple-09.jpg',
+    '/photos/couple-10.jpg',
+    '/photos/couple-11.jpg',
+    '/photos/couple-12.jpg',
   ],
   weekendSchedule: [
     {
@@ -83,7 +83,7 @@ export const site = {
     },
   ],
   dayTwoLogistics: [
-    'A minibus leaves Lough Erne Resort from 3:00 PM and will continue as needed to bring everyone into town.',
+    'A minibus leaves Lough Erne Resort from 3:45 PM and will continue as needed to bring everyone into town.',
     "Let us know if you'd like a seat, it's on us.",
     'Minibuses back to the hotel will run throughout the evening at different times.',
     'Ask one of the bridal party on the night for pickup times and directions.',
@@ -102,22 +102,22 @@ export const site = {
         {
           name: 'Caoimhe Leonard',
           role: 'Maid of Honour',
-          bio: "Met on 9 July 2001. Veterinary nursing with all the animal handling experience needed for Dan, and the perfect opposite number.",
+          bio: "Alannah's sister, a caring and dependable veterinary nurse with all the animal handling experience required for Dan!",
         },
         {
           name: 'Caragh Leonard',
           role: 'Bridesmaid',
-          bio: 'Met on 19 November 2003.',
+          bio: "Alannah's youngest sister. Has a track record for choosing group costumes over big occasions, she's expertly avoided a clash by graduating Monday before the wedding with the very important group outfit on Friday",
         },
         {
           name: 'Emma Horgan',
           role: 'Bridesmaid',
-          bio: "Met on the first day of college in Corrib Village. We travelled America together and we're still friends, she's a keeper.",
+          bio: "Met in Corrib Village on day one of college. Survived student life together, travelled America together and somehow still friends",
         },
         {
           name: 'Claire McBride',
           role: 'Bridesmaid',
-          bio: "Met in a nightclub toilet in London, now Alannah's best friend.",
+          bio: "Met in a London nightclub toilet. Still friends. Now also very grown up, having a baby the month after the wedding",
         },
       ],
     },
@@ -132,7 +132,7 @@ export const site = {
         {
           name: 'Dean Madden',
           role: 'Groomsman',
-          bio: 'Speaks the most I-talian of the group.',
+          bio: 'On paper the most responsible, with a wife, a house and two kids. In practice however...\nSpeaks the most I-talian of the group.',
         },
         {
           name: 'Richie Bennett',
@@ -222,6 +222,13 @@ export const site = {
         link: 'https://www.lougherneresort.com/',
       },
       {
+        name: 'Belmore Court & Motel',
+        distance: 'Enniskillen',
+        price: 'Varies',
+        notes: 'Popular and well-located option with a range of room types, free parking, and regular bus/taxi access nearby.',
+        link: 'https://www.motel.co.uk/',
+      },
+      {
         name: 'Killyhevlin Hotel',
         distance: 'Enniskillen',
         price: 'Varies',
@@ -242,13 +249,6 @@ export const site = {
         notes: 'Stylish boutique option close to the town centre, with an on-site bar/restaurant and straightforward access to wedding transport routes.',
         link: 'https://www.fermanaghlakelands.com/accommodation/westville-hotel-p680281',
       },
-      {
-        name: 'Belmore Court & Motel',
-        distance: 'Enniskillen',
-        price: 'Varies',
-        notes: 'Popular and well-located option with a range of room types, free parking, and regular bus/taxi access nearby.',
-        link: 'https://www.motel.co.uk/',
-      },
     ],
     faq: [
       {
@@ -257,25 +257,25 @@ export const site = {
       },
       {
         question: 'Are children invited?',
-        answer: "We're keeping the day for children aged 5 and over. If your child's name is not on your invitation, they are not included. Thank you so much for understanding.",
-      },
-      {
-        question: "What's the dress code?",
-        answer: 'Formal (classic Irish wedding). Think suits, ties, midi/maxi dresses or elevated cocktail attire, and shoes you can dance in.',
+        answer: "We're keeping the day for children aged 5 and over. If your child's name is not on your invitation, they are unfortunately not invited. Thank you so much for understanding!",
       },
       {
         question: 'Do you have a gift preference?',
         answer: "Your presence is the best gift. If you'd still like to give something, we would be very grateful for a contribution to our honeymoon/future fund.",
       },
       {
-        question: 'Can we take pictures during the wedding?',
-        answer: 'Please no photos during the Mass. After the ceremony, take as many as you like, and feel free to tag us on social media.',
+        question: "What's the dress code?",
+        answer: 'Formal (Classic Wedding Attire). Dress to impress and bring your dancing shoes!',
       },
       {
         question: 'I am an evening guest, where can I check timings?',
         answer: 'Please check the Weekend tab for the latest schedule and arrival times.',
         linkLabel: 'View weekend schedule',
         linkHref: '/weekend',
+      },
+      {
+        question: 'Can we take pictures during the wedding?',
+        answer: 'We kindly ask you not to take photos during the Mass. After the ceremony, take as many as you like, and don\'t forget to tag us on social media!',
       },
     ],
   },

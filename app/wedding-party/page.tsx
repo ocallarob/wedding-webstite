@@ -41,7 +41,7 @@ function MemberCard({ member, reversed }: { member: PartyMember; reversed: boole
   return (
     <article className="min-h-[210px] rounded-xl border border-stone/70 bg-ivory/80 p-4">
       <div className={`flex items-start gap-4 ${reversed ? 'flex-row-reverse' : ''}`}>
-        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border border-stone/70 bg-ivory">
+        <div className="h-24 w-24 shrink-0 overflow-hidden rounded-full border border-stone/70 bg-ivory sm:h-28 sm:w-28">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={photoSrc}
@@ -55,7 +55,7 @@ function MemberCard({ member, reversed }: { member: PartyMember; reversed: boole
         <div className={`flex-1 ${reversed ? 'text-left' : 'text-right'}`}>
           <h3 className="font-heading text-2xl text-charcoal">{member.name}</h3>
           <p className="text-xs uppercase tracking-[0.22em] text-muted">{member.role}</p>
-          <p className="mt-2 text-sm leading-7 text-charcoal">{member.bio}</p>
+          <p className="mt-2 whitespace-pre-line text-sm leading-7 text-charcoal">{member.bio}</p>
         </div>
       </div>
     </article>

@@ -1,5 +1,4 @@
 import Image from 'next/image';
-import Link from 'next/link';
 import { site } from '../../src/content/site';
 
 export default function TravelPage() {
@@ -15,7 +14,7 @@ export default function TravelPage() {
             <Image src="/assets/divider-line-transparent.png" alt="" aria-hidden width={388} height={50} className="h-auto w-20 flex-1 opacity-70 sm:w-28" />
           </div>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-muted">
-            The best way to get around Fermanagh is by car, with plenty of taxi options as well.
+            Make the most of Fermanagh by seeing what it has to offer
           </p>
         </header>
 
@@ -49,7 +48,7 @@ export default function TravelPage() {
             {site.travel.accommodations.map((stay) => (
               <article key={stay.name} className="rounded-xl border border-stone/75 bg-ivory/80 p-4">
                 <h2 className="font-heading text-xl font-light text-charcoal">{stay.name}</h2>
-                <p className="mt-2 text-xs uppercase tracking-[0.2em] text-muted">{stay.distance} • {stay.price}</p>
+                <p className="mt-2 text-xs uppercase tracking-[0.2em] text-muted">{stay.distance}</p>
                 <p className="mt-2 text-sm leading-7 text-charcoal/85">{stay.notes}</p>
                 {stay.link ? (
                   <a
@@ -95,26 +94,6 @@ export default function TravelPage() {
                     ) : null}
                   </div>
                 </div>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-stone bg-ivory/85 p-6 shadow-[0_10px_30px_rgba(58,53,48,0.05)]">
-          <p className="text-[11px] uppercase tracking-[0.24em] text-mauve">FAQs</p>
-          <div className="mt-4 space-y-4">
-            {site.travel.faq.map((item) => (
-              <article key={item.question} className="rounded-xl border border-stone/75 bg-ivory/80 p-4">
-                <h2 className="font-heading text-xl font-light text-charcoal">{item.question}</h2>
-                <p className="mt-2 text-sm leading-7 text-charcoal/85">{item.answer}</p>
-                {'linkHref' in item && item.linkHref ? (
-                  <Link
-                    href={item.linkHref}
-                    className="mt-2 inline-flex text-xs uppercase tracking-[0.2em] text-mauve underline underline-offset-4"
-                  >
-                    {'linkLabel' in item && item.linkLabel ? item.linkLabel : 'Read more'}
-                  </Link>
-                ) : null}
               </article>
             ))}
           </div>

@@ -1,17 +1,23 @@
 import Image from 'next/image';
+import { unstable_noStore as noStore } from 'next/cache';
 import { site } from '../../src/content/site';
 
-const storyPhotos = [
-  '/photos/couple-03.jpg',
-  '/photos/couple-10.jpg',
-  '/photos/couple-06.jpg',
-  '/photos/couple-04.jpg',
-  '/photos/couple-08.jpg',
-  '/photos/couple-11.jpg',
-] as const;
 const timelineYears = ['2020', '2021', '2022', '2022-2024', '2024'] as const;
+const STORY_PHOTO_COUNT = 6;
+
+function pickRandomPhotos(images: readonly string[], count: number): string[] {
+  const shuffled = [...images];
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled.slice(0, Math.min(count, shuffled.length));
+}
 
 export default function OurStoryPage() {
+  noStore();
+  const storyPhotos = pickRandomPhotos(site.galleryImages, STORY_PHOTO_COUNT);
+
   return (
     <div className="relative overflow-hidden bg-ivory">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(219,184,184,0.18),transparent_52%),radial-gradient(circle_at_88%_22%,rgba(143,168,136,0.14),transparent_34%)]" />

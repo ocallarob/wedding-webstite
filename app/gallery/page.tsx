@@ -1,19 +1,5 @@
 import Image from 'next/image';
-
-const galleryImages = [
-  '/photos/couple-01.jpg',
-  '/photos/couple-02.jpg',
-  '/photos/couple-03.jpg',
-  '/photos/couple-04.jpg',
-  '/photos/couple-05.jpg',
-  '/photos/couple-06.jpg',
-  '/photos/couple-07.jpg',
-  '/photos/couple-08.jpg',
-  '/photos/couple-09.jpg',
-  '/photos/couple-10.jpg',
-  '/photos/couple-11.jpg',
-  '/photos/couple-12.jpg',
-];
+import { site } from '../../src/content/site';
 
 export default function GalleryPage() {
   return (
@@ -34,7 +20,7 @@ export default function GalleryPage() {
 
         <section className="rounded-2xl border border-stone bg-ivory/85 p-6 shadow-[0_10px_30px_rgba(58,53,48,0.05)]">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {galleryImages.map((imageSrc, index) => (
+            {site.galleryImages.map((imageSrc, index) => (
               <div key={imageSrc} className="overflow-hidden rounded-xl border border-stone/75 bg-ivory/80 p-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
