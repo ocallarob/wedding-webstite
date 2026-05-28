@@ -4,6 +4,8 @@ import { site } from '../../src/content/site';
 
 const timelineYears = ['2020', '2021', '2022', '2022-2024', '2024'] as const;
 const STORY_PHOTO_COUNT = 6;
+const FEATURE_PHOTO = '/photos/couple-12.jpg';
+const STORY_EXCLUDED_PHOTOS = new Set([FEATURE_PHOTO, '/photos/couple-01.jpg']);
 
 function pickRandomPhotos(images: readonly string[], count: number): string[] {
   const shuffled = [...images];
@@ -16,7 +18,8 @@ function pickRandomPhotos(images: readonly string[], count: number): string[] {
 
 export default function OurStoryPage() {
   noStore();
-  const storyPhotos = pickRandomPhotos(site.galleryImages, STORY_PHOTO_COUNT);
+  const storyPhotoPool = site.galleryImages.filter((image) => !STORY_EXCLUDED_PHOTOS.has(image));
+  const storyPhotos = pickRandomPhotos(storyPhotoPool, STORY_PHOTO_COUNT);
 
   return (
     <div className="relative overflow-hidden bg-ivory">
@@ -25,9 +28,9 @@ export default function OurStoryPage() {
         <header className="rounded-3xl border border-stone/80 bg-ivory/80 px-6 py-10 text-center shadow-[0_18px_50px_rgba(58,53,48,0.07)] backdrop-blur-sm sm:px-10">
           <p className="text-xs uppercase tracking-[0.26em] text-mauve">Our Story</p>
           <div className="mt-2 flex items-center gap-4 sm:gap-6">
-            <Image src="/assets/divider-line-transparent.png" alt="" aria-hidden width={388} height={50} className="h-auto w-20 flex-1 opacity-70 sm:w-28" />
+            <Image src="/assets/divider-line-transparent.png" alt="" aria-hidden width={388} height={50} className="hidden h-auto w-20 flex-1 opacity-70 sm:block sm:w-28" />
             <h1 className="font-heading text-4xl font-light tracking-[0.05em] text-charcoal sm:text-5xl">From Galway to Fermanagh</h1>
-            <Image src="/assets/divider-line-transparent.png" alt="" aria-hidden width={388} height={50} className="h-auto w-20 flex-1 opacity-70 sm:w-28" />
+            <Image src="/assets/divider-line-transparent.png" alt="" aria-hidden width={388} height={50} className="hidden h-auto w-20 flex-1 opacity-70 sm:block sm:w-28" />
           </div>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-muted">
             We met on the slip in Galway, did long distance, moved to London, travelled a lot, and got engaged on Dog&apos;s Bay.
@@ -56,7 +59,7 @@ export default function OurStoryPage() {
           </div>
           <div className="overflow-hidden rounded-xl bg-ivory/70">
             <Image
-              src="/photos/couple-01.jpg"
+              src={FEATURE_PHOTO}
               alt="Alannah and Rob together outdoors"
               width={1536}
               height={1536}
