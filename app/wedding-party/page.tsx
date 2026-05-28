@@ -2,14 +2,21 @@ import { site } from '../../src/content/site';
 import Image from 'next/image';
 
 const partyPhotos: Record<string, string> = {
-  'Caoimhe Leonard': '/photos/1.svg',
-  'Caragh Leonard': '/photos/2.svg',
-  'Emma Horgan': '/photos/3.svg',
-  'Claire McBride': '/photos/4.svg',
+  'Caoimhe Leonard': '/photos/bridesmaid-caoimhe.jpg',
+  'Caragh Leonard': '/photos/bridesmaid-caragh.jpg',
+  'Emma Horgan': '/photos/bridesmaid-emma.jpg',
+  'Claire McBride': '/photos/bridesmaid-claire.jpg',
   'Dan Hindle': '/photos/5.svg',
   'Dean Madden': '/photos/6.svg',
   'Richie Bennett': '/photos/7.svg',
   'Ruairi Leonard': '/photos/8.svg',
+};
+
+const partyPhotoPosition: Record<string, string> = {
+  'Caoimhe Leonard': '50% 28%',
+  'Caragh Leonard': '50% 26%',
+  'Emma Horgan': '50% 27%',
+  'Claire McBride': '50% 22%',
 };
 
 type PartyMember = {
@@ -34,12 +41,13 @@ function MemberCard({ member, reversed }: { member: PartyMember; reversed: boole
   return (
     <article className="min-h-[210px] rounded-xl border border-stone/70 bg-ivory/80 p-4">
       <div className={`flex items-start gap-4 ${reversed ? 'flex-row-reverse' : ''}`}>
-        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border border-stone/70 bg-ivory">
+        <div className="h-24 w-24 shrink-0 overflow-hidden rounded-full border border-stone/70 bg-ivory sm:h-28 sm:w-28">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={photoSrc}
             alt={`${member.name} profile`}
-            className="h-full w-full object-contain"
+            className="h-full w-full object-cover"
+            style={{ objectPosition: partyPhotoPosition[member.name] ?? '50% 50%' }}
             loading="lazy"
             decoding="async"
           />
@@ -47,7 +55,7 @@ function MemberCard({ member, reversed }: { member: PartyMember; reversed: boole
         <div className={`flex-1 ${reversed ? 'text-left' : 'text-right'}`}>
           <h3 className="font-heading text-2xl text-charcoal">{member.name}</h3>
           <p className="text-xs uppercase tracking-[0.22em] text-muted">{member.role}</p>
-          <p className="mt-2 text-sm leading-7 text-charcoal">{member.bio}</p>
+          <p className="mt-2 whitespace-pre-line text-sm leading-7 text-charcoal">{member.bio}</p>
         </div>
       </div>
     </article>
@@ -76,9 +84,6 @@ export default function WeddingPartyPage() {
           </div>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-muted">
             We are so lucky to be surrounded by family and friends we love.
-          </p>
-          <p className="mx-auto mt-2 max-w-2xl text-xs uppercase tracking-[0.2em] text-muted">
-            Photos coming soon for each of the bridal party.
           </p>
         </header>
 

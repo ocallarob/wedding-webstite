@@ -24,7 +24,7 @@ export function SiteFrame({ coupleNames, dateText, locationText, children }: Pro
     { href: '/wedding-party', label: 'Wedding Party' },
     { href: '/weekend', label: 'Weekend' },
     { href: '/travel', label: 'Travel' },
-    { href: '/gallery', label: 'Gallery' },
+    { href: '/faq', label: 'FAQ' },
   ];
 
   return (

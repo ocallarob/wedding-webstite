@@ -16,6 +16,7 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/wedding-party') ||
     pathname.startsWith('/weekend') ||
     pathname.startsWith('/travel') ||
+    pathname.startsWith('/faq') ||
     pathname.startsWith('/gallery') ||
     pathname.startsWith('/save-the-date') ||
     pathname.startsWith('/invite-email-preview');

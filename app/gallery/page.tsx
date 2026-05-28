@@ -1,16 +1,5 @@
 import Image from 'next/image';
-
-const galleryPlaceholders = [
-  '/photos/1.svg',
-  '/photos/2.svg',
-  '/photos/3.svg',
-  '/photos/4.svg',
-  '/photos/5.svg',
-  '/photos/6.svg',
-  '/photos/7.svg',
-  '/photos/8.svg',
-  '/photos/9.svg',
-];
+import { site } from '../../src/content/site';
 
 export default function GalleryPage() {
   return (
@@ -31,13 +20,13 @@ export default function GalleryPage() {
 
         <section className="rounded-2xl border border-stone bg-ivory/85 p-6 shadow-[0_10px_30px_rgba(58,53,48,0.05)]">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {galleryPlaceholders.map((imageSrc, index) => (
+            {site.galleryImages.map((imageSrc, index) => (
               <div key={imageSrc} className="overflow-hidden rounded-xl border border-stone/75 bg-ivory/80 p-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={imageSrc}
-                  alt={`Gallery placeholder ${index + 1}`}
-                  className="h-56 w-full rounded-lg object-contain"
+                  alt={`Alannah and Rob photo ${index + 1}`}
+                  className="aspect-[3/4] w-full rounded-lg object-cover"
                   loading="lazy"
                   decoding="async"
                 />

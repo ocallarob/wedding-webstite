@@ -125,13 +125,46 @@ async function upsertHousehold(row: InputRow): Promise<void> {
   }
 }
 
+async function insertOnlyHousehold(row: InputRow): Promise<'inserted' | 'skipped'> {
+  const existing = await sql`
+    SELECT id
+    FROM households
+    WHERE contact_email = ${row.contact_email}
+    LIMIT 1
+  `;
+
+  if (existing.length > 0) return 'skipped';
+
+  const inserted = await sql`
+    INSERT INTO households (contact_email, label, is_paper_invite)
+    VALUES (${row.contact_email}, ${row.label || null}, ${row.is_paper_invite})
+    RETURNING id
+  `;
+
+  const householdId = inserted[0].id as string;
+
+  for (let i = 0; i < row.members.length; i += 1) {
+    const name = row.members[i];
+    const type = asMemberType(row.member_types[i]);
+    await sql`
+      INSERT INTO household_members (household_id, full_name, member_type, dietary, sort_order)
+      VALUES (${householdId}, ${name}, ${type}, ${JSON.stringify({ options: [], other: '' })}::jsonb, ${i})
+    `;
+  }
+
+  return 'inserted';
+}
+
 async function main() {
   const fileArg = process.argv[2];
-  const modeArg = process.argv[3];
+  const flags = new Set(process.argv.slice(3));
   if (!fileArg) {
-    throw new Error('Usage: pnpm tsx --env-file=.env.local scripts/import-households.ts <csv_path> [--apply]');
+    throw new Error(
+      'Usage: pnpm tsx --env-file=.env.local scripts/import-households.ts <csv_path> [--apply] [--insert-only]',
+    );
   }
-  const apply = modeArg === '--apply';
+  const apply = flags.has('--apply');
+  const insertOnly = flags.has('--insert-only');
   const csvPath = resolve(process.cwd(), fileArg);
   const csv = readFileSync(csvPath, 'utf8');
   const rows = parseRows(csv);
@@ -146,10 +179,22 @@ async function main() {
     return;
   }
 
+  if (insertOnly) {
+    let insertedCount = 0;
+    let skippedCount = 0;
+    for (const row of rows) {
+      const result = await insertOnlyHousehold(row);
+      if (result === 'inserted') insertedCount += 1;
+      if (result === 'skipped') skippedCount += 1;
+    }
+    console.log(`\nInserted ${insertedCount} new households. Skipped ${skippedCount} existing households.`);
+    return;
+  }
+
   for (const row of rows) {
     await upsertHousehold(row);
   }
-  console.log(`\nImported ${rows.length} households.`);
+  console.log(`\nImported ${rows.length} households (upsert mode).`);
 }
 
 main().catch((err) => {
