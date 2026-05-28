@@ -107,7 +107,7 @@ export const site = {
         {
           name: 'Caragh Leonard',
           role: 'Bridesmaid',
-          bio: "Alannah's youngest sister. Has a track record for choosing group costumes over big occasions, she's expertly avoided a clash by graduating Monday before the wedding with the very important group outfit on Friday",
+          bio: "Alannah's youngest sister. Luckily UL have changed her graduation date so we don't have to find out which event she'd choose",
         },
         {
           name: 'Emma Horgan',
@@ -127,22 +127,22 @@ export const site = {
         {
           name: 'Dan Hindle',
           role: 'Best Man',
-          bio: "If you haven't heard of Dan before the wedding, you'll definitely have heard of him afterwards.",
+          bio: "If you haven't heard of Dan before the wedding, you'll definitely know him afterwards.",
         },
         {
           name: 'Dean Madden',
           role: 'Groomsman',
-          bio: 'On paper the most responsible, with a wife, a house and two kids. In practice however...\nSpeaks the most I-talian of the group.',
+          bio: 'On paper the most responsible, with a wife, a house and two kids. On paper... \nSpeaks the most I-talian of the group.',
         },
         {
           name: 'Richie Bennett',
           role: 'Groomsman',
-          bio: 'Probably the most responsible groomsman.',
+          bio: 'Loves a good mass',
         },
         {
           name: 'Ruairi Leonard',
           role: 'Groomsman',
-          bio: 'The youngest and actually the most responsible groomsman.',
+          bio: "Alannah's only brother. The youngest, smartest and actually the most responsible groomsman. \n(Alannah definitely didn't write this)",
         },
       ],
     },

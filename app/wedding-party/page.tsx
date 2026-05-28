@@ -6,10 +6,10 @@ const partyPhotos: Record<string, string> = {
   'Caragh Leonard': '/photos/bridesmaid-caragh.jpg',
   'Emma Horgan': '/photos/bridesmaid-emma.jpg',
   'Claire McBride': '/photos/bridesmaid-claire.jpg',
-  'Dan Hindle': '/photos/5.svg',
-  'Dean Madden': '/photos/6.svg',
-  'Richie Bennett': '/photos/7.svg',
-  'Ruairi Leonard': '/photos/8.svg',
+  'Dan Hindle': '/photos/groomsman-dan.jpg',
+  'Dean Madden': '/photos/groomsman-dean.jpg',
+  'Richie Bennett': '/photos/groomsman-richie.jpg',
+  'Ruairi Leonard': '/photos/groomsman-ruairi.jpg',
 };
 
 const partyPhotoPosition: Record<string, string> = {
@@ -17,6 +17,7 @@ const partyPhotoPosition: Record<string, string> = {
   'Caragh Leonard': '50% 26%',
   'Emma Horgan': '50% 27%',
   'Claire McBride': '50% 22%',
+  'Ruairi Leonard': '50% 40%',
 };
 
 type PartyMember = {
@@ -77,10 +78,17 @@ export default function WeddingPartyPage() {
       <div className="relative mx-auto max-w-6xl space-y-10 px-5 pb-20 pt-[84px]">
         <header className="rounded-3xl border border-stone/80 bg-ivory/80 px-6 py-10 text-center shadow-[0_18px_50px_rgba(58,53,48,0.07)] backdrop-blur-sm sm:px-10">
           <p className="text-xs uppercase tracking-[0.26em] text-mauve">Wedding Party</p>
-          <div className="mt-2 flex items-center gap-4 sm:gap-6">
-            <Image src="/assets/divider-line-transparent.png" alt="" aria-hidden width={388} height={50} className="h-auto w-20 flex-1 opacity-70 sm:w-28" />
-            <h1 className="font-heading text-4xl font-light tracking-[0.05em] text-charcoal sm:text-5xl">The People Beside Us</h1>
-            <Image src="/assets/divider-line-transparent.png" alt="" aria-hidden width={388} height={50} className="h-auto w-20 flex-1 opacity-70 sm:w-28" />
+          <div className="mt-2 flex items-center justify-center gap-4 sm:gap-6">
+            <Image src="/assets/divider-line-transparent.png" alt="" aria-hidden width={388} height={50} className="hidden h-auto w-20 flex-1 opacity-70 sm:block sm:w-28" />
+            <h1 className="w-full text-center font-heading text-4xl font-light leading-tight tracking-[0.04em] text-charcoal sm:w-auto sm:text-5xl sm:tracking-[0.05em]">
+              <span className="sm:hidden">
+                The People
+                <br />
+                Beside Us
+              </span>
+              <span className="hidden sm:inline">The People Beside Us</span>
+            </h1>
+            <Image src="/assets/divider-line-transparent.png" alt="" aria-hidden width={388} height={50} className="hidden h-auto w-20 flex-1 opacity-70 sm:block sm:w-28" />
           </div>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-muted">
             We are so lucky to be surrounded by family and friends we love.
