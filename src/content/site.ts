@@ -132,12 +132,12 @@ export const site = {
         {
           name: 'Dean Madden',
           role: 'Groomsman',
-          bio: 'On paper the most responsible, with a wife, a house and two kids. On paper... \nHe speaks the most I-talian of the group.',
+          bio: 'On paper the most responsible, with a wife, a house and two kids. On paper... \nSpeaks the most I-talian of the group.',
         },
         {
           name: 'Richie Bennett',
           role: 'Groomsman',
-          bio: 'Despite this, probably the most responsible groomsman.',
+          bio: 'Loves a good mass',
         },
         {
           name: 'Ruairi Leonard',

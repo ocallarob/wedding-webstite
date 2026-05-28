@@ -17,6 +17,7 @@ const partyPhotoPosition: Record<string, string> = {
   'Caragh Leonard': '50% 26%',
   'Emma Horgan': '50% 27%',
   'Claire McBride': '50% 22%',
+  'Ruairi Leonard': '50% 40%',
 };
 
 type PartyMember = {
