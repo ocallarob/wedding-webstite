@@ -58,6 +58,9 @@ export function buildInviteEmailHtml(displayName: string, rsvpUrl: string, baseU
         If the button does not work, use this link:<br>
         <a href="${rsvpUrl}" style="color:#9c7a8c">Open your RSVP link</a>
       </p>
+      <p style="margin:10px 0 0;font-family:'Jost',Arial,sans-serif;font-size:12px;line-height:1.5;color:#7a756f;text-align:center">
+        See <a href="https://alannah-rob.ie" style="color:#9c7a8c">alannah-rob.ie</a> for wedding details.
+      </p>
 
       <div style="text-align:right;margin-top:15px">
         <img src="${assetBase}/assets/devenish-tower-rsvp.png" width="108" alt="" style="display:inline-block;border:0;outline:none;text-decoration:none;opacity:0.75">
