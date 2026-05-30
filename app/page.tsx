@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { site } from '../src/content/site';
 import { Monogram } from '../src/components/Monogram';
 import { DateEasterEgg } from '../src/components/DateEasterEgg';
+import { IrishPhrase } from '../src/components/IrishPhrase';
 
 const quickInfo = [
   { label: 'Date', value: site.dateText },
@@ -399,25 +400,5 @@ function DogBaySketch() {
         sizes="(min-width: 768px) 40vw, 100vw"
       />
     </div>
-  );
-}
-
-function IrishPhrase({ phrase, translation, className }: { phrase: string; translation: string; className?: string }) {
-  return (
-    <span className="group relative inline-grid place-items-center">
-      <span
-        tabIndex={0}
-        className={`peer font-script leading-none text-blush opacity-100 outline-none transition-opacity duration-150 group-hover:opacity-0 peer-focus-visible:opacity-0 ${className ?? ''}`}
-        style={{ fontFamily: 'var(--font-script), cursive', gridArea: '1 / 1' }}
-      >
-        {phrase}
-      </span>
-      <span
-        className={`pointer-events-none font-script leading-none text-blush opacity-0 transition-opacity duration-150 group-hover:opacity-100 peer-focus-visible:opacity-100 ${className ?? ''}`}
-        style={{ fontFamily: 'var(--font-script), cursive', gridArea: '1 / 1' }}
-      >
-        {translation}
-      </span>
-    </span>
   );
 }

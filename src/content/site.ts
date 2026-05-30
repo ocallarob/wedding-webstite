@@ -91,7 +91,7 @@ export const site = {
         {
           name: 'Caoimhe Leonard',
           role: 'Maid of Honour',
-          bio: "Alannah's sister, a caring and dependable veterinary nurse with all the animal handling experience required for Dan!",
+          bio: "Alannah's sister, a caring and dependable veterinary nurse with all the animal handling experience required for Dan",
         },
         {
           name: 'Caragh Leonard',
@@ -126,7 +126,7 @@ export const site = {
         {
           name: 'Richie Bennett',
           role: 'Groomsman',
-          bio: 'Don\'t believe the propaganda, oldest is definitely NOT wisest. ',
+          bio: 'Dr. Dick PhD, did his best to spend his life in college until they got rid of him. Definitely has the largest head of the group'
         },
         {
           name: 'Ruairi Leonard',

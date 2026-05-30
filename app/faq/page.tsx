@@ -22,10 +22,10 @@ export default function FaqPage() {
         <section className="rounded-2xl border border-stone bg-ivory/85 p-6 shadow-[0_10px_30px_rgba(58,53,48,0.05)] md:p-8">
           <div className="space-y-3">
             {site.travel.faq.map((item) => (
-              <details key={item.question} className="group rounded-xl border border-stone/70 bg-ivory/90 p-4">
-                <summary className="cursor-pointer list-none pr-8 text-sm font-medium tracking-[0.01em] text-charcoal">
+              <div key={item.question} className="rounded-xl border border-stone/70 bg-ivory/90 p-4">
+                <h2 className="pr-8 text-sm font-medium tracking-[0.01em] text-charcoal">
                   {item.question}
-                </summary>
+                </h2>
                 <p className="mt-3 text-sm leading-7 text-muted">{item.answer}</p>
                 {'linkHref' in item && 'linkLabel' in item && item.linkHref && item.linkLabel && (
                   <Link
@@ -35,7 +35,7 @@ export default function FaqPage() {
                     {item.linkLabel}
                   </Link>
                 )}
-              </details>
+              </div>
             ))}
           </div>
         </section>
