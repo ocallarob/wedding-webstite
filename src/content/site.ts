@@ -12,20 +12,9 @@ export const site = {
   // heroImage: 'https://YOUR_CLOUDFRONT_DOMAIN/photos/hero.jpg',
   rsvpDeadline: 'Please RSVP by 28 June 2026',
   welcomeMessage: 'We are so excited to have you as part of our day.',
-  galleryImages: [
-    '/photos/couple-01.jpg',
-    '/photos/couple-02.jpg',
-    '/photos/couple-03.jpg',
-    '/photos/couple-04.jpg',
-    '/photos/couple-05.jpg',
-    '/photos/couple-06.jpg',
-    '/photos/couple-07.jpg',
-    '/photos/couple-08.jpg',
-    '/photos/couple-09.jpg',
-    '/photos/couple-10.jpg',
-    '/photos/couple-11.jpg',
-    '/photos/couple-12.jpg',
-  ],
+  galleryImages: Array.from({ length: 57 }, (_, index) =>
+    `/photos/couple-${String(index + 1).padStart(2, '0')}.jpg`,
+  ),
   weekendSchedule: [
     {
       title: 'Our Wedding Day',
@@ -112,12 +101,12 @@ export const site = {
         {
           name: 'Emma Horgan',
           role: 'Bridesmaid',
-          bio: "Met in Corrib Village on day one of college. Survived student life together, travelled America together and somehow still friends",
+          bio: "Met in Corrib Village on day one of college. One degree, one American adventure, and countless questionable decisions later, we're still friends.",
         },
         {
           name: 'Claire McBride',
           role: 'Bridesmaid',
-          bio: "Met in a London nightclub toilet. Still friends. Now also very grown up, having a baby the month after the wedding",
+          bio: "From a London nightclub toilet to being each other's bridesmaids... Now she's getting ready for her next role: mum!",
         },
       ],
     },
@@ -137,12 +126,12 @@ export const site = {
         {
           name: 'Richie Bennett',
           role: 'Groomsman',
-          bio: 'Loves a good mass',
+          bio: 'Don\'t believe the propaganda, oldest is definitely NOT wisest. ',
         },
         {
           name: 'Ruairi Leonard',
           role: 'Groomsman',
-          bio: "Alannah's only brother. The youngest, smartest and actually the most responsible groomsman. \n(Alannah definitely didn't write this)",
+          bio: "Fresh off his A-Levels and more importantly his first Stag do, he's younger than the iPhone but mentally older than the rest of the lads",
         },
       ],
     },

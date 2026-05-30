@@ -4,8 +4,8 @@ import { site } from '../../src/content/site';
 
 const timelineYears = ['2020', '2021', '2022', '2022-2024', '2024'] as const;
 const STORY_PHOTO_COUNT = 6;
-const FEATURE_PHOTO = '/photos/couple-12.jpg';
-const STORY_EXCLUDED_PHOTOS = new Set([FEATURE_PHOTO, '/photos/couple-01.jpg']);
+const FEATURE_PHOTO = '/photos/couple-ourstory.jpg';
+const STORY_EXCLUDED_PHOTOS = new Set([FEATURE_PHOTO]);
 
 function pickRandomPhotos(images: readonly string[], count: number): string[] {
   const shuffled = [...images];
@@ -77,7 +77,9 @@ export default function OurStoryPage() {
                 <img
                   src={imageSrc}
                   alt={`Our story photo ${index + 1}`}
-                  className="aspect-[3/4] w-full rounded-lg object-cover"
+                  className={`aspect-[3/4] w-full rounded-lg ${
+                    imageSrc === '/photos/couple-01.jpg' ? 'bg-ivory object-contain' : 'object-cover'
+                  }`}
                   loading="lazy"
                   decoding="async"
                 />
