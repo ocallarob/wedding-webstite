@@ -102,21 +102,22 @@ export default function HomePage() {
     <div className="relative overflow-hidden bg-ivory">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(219,184,184,0.22),transparent_50%),radial-gradient(circle_at_85%_20%,rgba(143,168,136,0.15),transparent_35%)]" />
       <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-16 px-5 pb-20 pt-10 sm:pt-14">
-        <section className="relative space-y-8 rounded-3xl border border-stone/80 bg-ivory/80 px-6 pb-10 pt-8 text-center shadow-[0_24px_80px_rgba(58,53,48,0.08)] backdrop-blur-sm sm:px-10 sm:pt-10">
-          <div className="flex items-center justify-between gap-4">
+        <div className="sticky top-0 z-50 rounded-2xl border border-stone/80 bg-ivory/95 px-4 py-3 shadow-[0_10px_24px_rgba(58,53,48,0.08)] backdrop-blur">
+          <div className="flex items-center gap-4">
             <Link href="/" className="block w-fit shrink-0 no-underline" aria-label="Home">
-              <Monogram size={58} />
+              <Monogram size={52} />
             </Link>
-            <MobileHomeMenu />
             <HomeHeroNav />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/assets/devenish-tower-rsvp.png"
-              alt=""
-              aria-hidden
-              className="h-auto w-20 shrink-0 opacity-75 md:w-[120px]"
-            />
+            <div className="ml-auto lg:hidden">
+              <MobileHomeMenu />
+            </div>
+            <div className="hidden font-heading italic text-xl leading-none tracking-[0.18em] text-muted lg:block">
+              <DateEasterEgg defaultText={site.date} targetDate={site.countdownDateTime} className="inline" />
+            </div>
           </div>
+        </div>
+
+        <section className="relative space-y-8 rounded-3xl border border-stone/80 bg-ivory/80 px-6 pb-10 pt-8 text-center shadow-[0_24px_80px_rgba(58,53,48,0.08)] backdrop-blur-sm sm:px-10 sm:pt-10">
           <div className="space-y-4">
             <p className="text-xs uppercase text-mauve sm:tracking-[0.3em]">
               <DateEasterEgg

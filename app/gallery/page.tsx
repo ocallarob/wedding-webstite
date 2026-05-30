@@ -26,7 +26,9 @@ export default function GalleryPage() {
                 <img
                   src={imageSrc}
                   alt={`Alannah and Rob photo ${index + 1}`}
-                  className="aspect-[3/4] w-full rounded-lg object-cover"
+                  className={`aspect-[3/4] w-full rounded-lg ${
+                    imageSrc === '/photos/couple-01.jpg' ? 'bg-ivory object-contain' : 'object-cover'
+                  }`}
                   loading="lazy"
                   decoding="async"
                 />
