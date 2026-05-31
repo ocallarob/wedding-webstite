@@ -4,9 +4,13 @@ import { sql } from '../../../src/lib/db';
 import { ADMIN_COOKIE_NAME, hasAdminAuth, isSameOriginRequest } from '../../../src/lib/adminAuth';
 import { createAdminSessionToken, SESSION_TTL_SECONDS } from '../../../src/lib/adminSession';
 import { verifyCsrfToken } from '../../../src/lib/csrf';
+import { buildInviteEmailHtml } from '../../../src/lib/inviteEmailHtml';
+import { runThrottledBatch } from '../../../src/lib/throttledBatch';
 
 export const dynamic = 'force-dynamic';
 const REMINDER_BATCH_LIMIT = 100;
+const SENDS_PER_SECOND = 5;
+const SEND_INTERVAL_MS = Math.ceil(1000 / SENDS_PER_SECOND);
 
 function buildReminderEmailHtml(displayName: string, rsvpUrl: string, baseUrl: string): string {
   const assetBase = baseUrl.replace(/\/$/, '');
@@ -157,24 +161,80 @@ export async function POST(request: NextRequest) {
 
     if (rows.length === 0) return NextResponse.redirect(new URL('/dashboard?reminder=none', request.url));
 
-    const results = await Promise.allSettled(rows.map(async (h) => {
-      try {
-        await resend.emails.send({
-          from: 'Alannah & Rob <hello@alannah-rob.ie>',
-          to: h.contact_email as string,
-          subject: 'Kind reminder: RSVP for Alannah & Rob wedding',
-          html: buildReminderEmailHtml(h.display_name as string, `${baseUrl}/rsvp?token=${h.invite_token}`, baseUrl),
-        });
-        await sql`UPDATE households SET reminder_count = reminder_count + 1, last_reminder_at = now(), reminder_failed_count = 0, last_reminder_failed_at = NULL WHERE id = ${h.id}`;
-      } catch (error) {
-        await sql`UPDATE households SET reminder_failed_count = reminder_failed_count + 1, last_reminder_failed_at = now() WHERE id = ${h.id}`;
-        throw error;
-      }
-    }));
-
-    const sent = results.filter((r) => r.status === 'fulfilled').length;
-    const failed = results.filter((r) => r.status === 'rejected').length;
+    const { sent, failed } = await runThrottledBatch({
+      items: rows,
+      intervalMs: SEND_INTERVAL_MS,
+      runItem: async (h) => {
+        try {
+          const sendResult = await resend.emails.send({
+            from: 'Alannah & Rob <hello@alannah-rob.ie>',
+            to: h.contact_email as string,
+            subject: 'Kind reminder: RSVP for Alannah & Rob wedding',
+            html: buildReminderEmailHtml(h.display_name as string, `${baseUrl}/rsvp?token=${h.invite_token}`, baseUrl),
+          });
+          if (sendResult.error || !sendResult.data?.id) {
+            throw new Error(sendResult.error?.message ?? 'Resend did not return a message id');
+          }
+          await sql`UPDATE households SET reminder_count = reminder_count + 1, last_reminder_at = now(), reminder_failed_count = 0, last_reminder_failed_at = NULL WHERE id = ${h.id}`;
+        } catch (error) {
+          await sql`UPDATE households SET reminder_failed_count = reminder_failed_count + 1, last_reminder_failed_at = now() WHERE id = ${h.id}`;
+          throw error;
+        }
+      },
+    });
     return NextResponse.redirect(new URL(`/dashboard?reminder=done&sent=${sent}&failed=${failed}`, request.url));
+  }
+
+  if (action === 'resend_invite') {
+    if (!hasAdminAuth(request)) return NextResponse.redirect(new URL('/dashboard?error=unauthorized', request.url));
+    if (!isSameOriginRequest(request)) return NextResponse.redirect(new URL('/dashboard?error=unauthorized', request.url));
+    if (!csrfValid) return NextResponse.redirect(new URL('/dashboard?error=unauthorized', request.url));
+
+    const householdId = String(formData.get('household_id') ?? '').trim();
+    if (!householdId) return NextResponse.redirect(new URL('/dashboard?resend=failed', request.url));
+
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://alannah-rob.ie';
+    const rows = await sql`
+      SELECT h.id, h.invite_token, h.contact_email,
+        COALESCE((
+          SELECT string_agg(m.full_name, ' & ' ORDER BY m.sort_order, m.created_at)
+          FROM household_members m
+          WHERE m.household_id = h.id
+        ), h.contact_email) as display_name
+      FROM households h
+      WHERE h.id = ${householdId}
+      LIMIT 1
+    `;
+    const household = rows[0];
+    if (!household) return NextResponse.redirect(new URL('/dashboard?resend=failed', request.url));
+
+    try {
+      const rsvpUrl = `${baseUrl}/rsvp?token=${household.invite_token}`;
+      const sendResult = await resend.emails.send({
+        from: 'Alannah & Rob <hello@alannah-rob.ie>',
+        to: household.contact_email as string,
+        subject: "You're invited — Alannah & Rob, 28 August 2026",
+        html: buildInviteEmailHtml(household.display_name as string, rsvpUrl, baseUrl),
+      });
+      if (sendResult.error || !sendResult.data?.id) {
+        throw new Error(sendResult.error?.message ?? 'Resend did not return a message id');
+      }
+      await sql`
+        UPDATE households
+        SET invited_at = COALESCE(invited_at, now()), invite_failed_count = 0, last_invite_failed_at = NULL, last_invite_error = NULL
+        WHERE id = ${household.id}
+      `;
+      return NextResponse.redirect(new URL('/dashboard?resend=done', request.url));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown invite send failure';
+      await sql`
+        UPDATE households
+        SET invite_failed_count = invite_failed_count + 1, last_invite_failed_at = now(), last_invite_error = ${message}
+        WHERE id = ${household.id}
+      `;
+      return NextResponse.redirect(new URL('/dashboard?resend=failed', request.url));
+    }
   }
 
   const password = formData.get('password');

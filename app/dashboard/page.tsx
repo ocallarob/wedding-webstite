@@ -1,6 +1,6 @@
 import { sql } from '../../src/lib/db';
 import { site } from '../../src/content/site';
-import { ExpandableCell } from './ExpandableCell';
+import { DashboardTable } from './DashboardTable';
 import { SendInitialInvitesButton } from './SendInitialInvitesButton';
 import { cookies } from 'next/headers';
 import { verifyAdminSessionToken } from '../../src/lib/adminSession';
@@ -24,6 +24,7 @@ type Row = {
   is_paper_invite: boolean;
   invited_at: string | null;
   invite_failed_count: number;
+  last_invite_error: string | null;
   reminder_count: number;
   reminder_failed_count: number;
   song: string | null;
@@ -32,56 +33,12 @@ type Row = {
   members: Member[];
 };
 
-function householdName(row: Row): string {
-  if (row.label?.trim()) return row.label.trim();
-  if (row.members.length > 0) return row.members.map((m) => m.full_name).join(' & ');
-  return row.contact_email;
-}
-
-function status(row: Row): string {
-  const anyAttending = row.members.some((m) => m.attending_day1 || m.attending_day2);
-  if (row.submitted_at && anyAttending) return 'Coming';
-  if (row.submitted_at) return 'Not coming';
-  if (row.invited_at) return 'Invited';
-  return 'Not invited';
-}
-
-function sendStatus(row: Row): string {
-  if (!row.invited_at) {
-    return row.invite_failed_count > 0 ? `Invite failed (${row.invite_failed_count})` : 'Not sent';
-  }
-  if (row.submitted_at) return 'RSVP received';
-  if (row.reminder_failed_count > 0) return `Reminder failed (${row.reminder_failed_count})`;
-  if (row.reminder_count > 0) return `Reminder sent (${row.reminder_count})`;
-  return 'Invite sent';
-}
-
-function yesNoDash(value: boolean | null): string {
-  if (value === true) return 'Yes';
-  if (value === false) return 'No';
-  return '—';
-}
-
-function normaliseDietary(input: unknown): { options: string[]; other: string } {
-  if (!input || typeof input !== 'object') return { options: [], other: '' };
-  const source = input as { options?: unknown; other?: unknown };
-  const options = Array.isArray(source.options) ? source.options.filter((v): v is string => typeof v === 'string') : [];
-  const other = typeof source.other === 'string' ? source.other : '';
-  return { options, other };
-}
-
-function memberSummary(member: Member): string {
-  const d = normaliseDietary(member.dietary);
-  const dietary = [...d.options.map((o) => o.toUpperCase()), d.other.trim()].filter(Boolean).join(', ') || '—';
-  return `${member.full_name} (${member.member_type}) · D1: ${yesNoDash(member.attending_day1)} · D2: ${yesNoDash(member.attending_day2)} · Dietary: ${dietary}`;
-}
-
 type Props = {
-  searchParams: Promise<{ error?: string; reminder?: string; sent?: string; failed?: string }>;
+  searchParams: Promise<{ error?: string; reminder?: string; resend?: string; sent?: string; failed?: string }>;
 };
 
 export default async function DashboardPage({ searchParams }: Props) {
-  const { error, reminder, sent, failed } = await searchParams;
+  const { error, reminder, resend, sent, failed } = await searchParams;
   const cookieStore = await cookies();
   const adminSession = cookieStore.get('admin_session')?.value;
   const adminSecret = process.env.ADMIN_SECRET;
@@ -122,6 +79,7 @@ export default async function DashboardPage({ searchParams }: Props) {
       h.is_paper_invite,
       h.invited_at,
       h.invite_failed_count,
+      h.last_invite_error,
       h.reminder_count,
       h.reminder_failed_count,
       hr.song,
@@ -139,7 +97,6 @@ export default async function DashboardPage({ searchParams }: Props) {
     LEFT JOIN household_members m ON m.household_id = h.id
     LEFT JOIN household_rsvps hr ON hr.household_id = h.id
     GROUP BY h.id, hr.song, hr.message, hr.submitted_at
-    ORDER BY COALESCE(h.label, h.contact_email)
   `) as Row[];
 
   const totalGuests = rows.reduce((sum, r) => sum + r.members.length, 0);
@@ -179,6 +136,8 @@ export default async function DashboardPage({ searchParams }: Props) {
 
       {reminder === 'done' && <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-charcoal">Reminder batch complete: sent {sent ?? '0'}, failed {failed ?? '0'}.</p>}
       {reminder === 'none' && <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-muted">No households currently need a reminder.</p>}
+      {resend === 'done' && <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-charcoal">Invite resend complete.</p>}
+      {resend === 'failed' && <p className="rounded-xl border border-red-200 bg-red-50/80 px-4 py-3 text-center text-sm text-red-700">Invite resend failed. See row send error for details.</p>}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
@@ -195,48 +154,7 @@ export default async function DashboardPage({ searchParams }: Props) {
         ))}
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-stone">
-        <table className="w-full text-sm">
-          <thead className="bg-stone/40 text-left">
-            <tr>
-              {['Household', 'Contact Email', 'Invite Code', 'Paper Invite', 'Status', 'Send Status', 'Members', 'Song', 'Message'].map((h) => (
-                <th key={h} className="px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-muted font-normal whitespace-nowrap">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-stone/60">
-            {rows.map((row) => (
-              <tr key={row.id} className="bg-ivory/60 hover:bg-stone/20 transition-colors align-top">
-                <td className="px-4 py-3 font-medium text-charcoal whitespace-nowrap">{householdName(row)}</td>
-                <td className="px-4 py-3 text-muted">{row.contact_email}</td>
-                <td className="px-4 py-3 text-muted whitespace-nowrap">
-                  <details>
-                    <summary className="cursor-pointer text-xs text-mauve underline-offset-4 hover:underline">Show code</summary>
-                    <code className="mt-2 inline-block rounded border border-stone bg-white/80 px-2 py-1 text-[11px] text-charcoal">
-                      {row.invite_token}
-                    </code>
-                  </details>
-                </td>
-                <td className="px-4 py-3 text-muted whitespace-nowrap">{row.is_paper_invite ? 'Yes' : 'No'}</td>
-                <td className="px-4 py-3 text-muted whitespace-nowrap">{status(row)}</td>
-                <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">{sendStatus(row)}</td>
-                <td className="px-4 py-3 text-xs text-muted min-w-[340px]">
-                  <div className="space-y-1">
-                    {row.members.map((m, idx) => <p key={`${row.id}-m-${idx}`}>{memberSummary(m)}</p>)}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-muted max-w-[160px] truncate">{row.song ?? '—'}</td>
-                <td className="px-4 py-3 text-muted">{row.message ? <ExpandableCell text={row.message} /> : '—'}</td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-muted">No households yet.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DashboardTable rows={rows} csrfToken={csrfToken} />
     </div>
   );
 }

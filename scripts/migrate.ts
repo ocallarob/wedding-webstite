@@ -25,6 +25,8 @@ async function migrate() {
     )
   `;
 
+  await sql`ALTER TABLE households ADD COLUMN IF NOT EXISTS last_invite_error TEXT`;
+
   await sql`
     CREATE TABLE IF NOT EXISTS household_members (
       id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
