@@ -3,14 +3,11 @@ import { Resend } from 'resend';
 import { sql } from '../../../../src/lib/db';
 import { hasAdminAuth, isSameOriginRequest } from '../../../../src/lib/adminAuth';
 import { buildInviteEmailHtml } from '../../../../src/lib/inviteEmailHtml';
+import { runThrottledBatch } from '../../../../src/lib/throttledBatch';
 
 export const dynamic = 'force-dynamic';
 const SENDS_PER_SECOND = 5;
 const SEND_INTERVAL_MS = Math.ceil(1000 / SENDS_PER_SECOND);
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 export async function POST(request: NextRequest) {
   if (!hasAdminAuth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -37,43 +34,38 @@ export async function POST(request: NextRequest) {
   const remaining = allUninvited.length - households.length;
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://alannah-rob.ie';
 
-  let sent = 0;
-  let failed = 0;
+  const { sent, failed } = await runThrottledBatch({
+    items: households,
+    intervalMs: SEND_INTERVAL_MS,
+    runItem: async (household) => {
+      try {
+        const rsvpUrl = `${baseUrl}/rsvp?token=${household.invite_token}`;
+        const sendResult = await resend.emails.send({
+          from: 'Alannah & Rob <hello@alannah-rob.ie>',
+          to: household.contact_email as string,
+          subject: "You're invited — Alannah & Rob, 28 August 2026",
+          html: buildInviteEmailHtml(household.display_name as string, rsvpUrl, baseUrl),
+        });
+        if (sendResult.error || !sendResult.data?.id) {
+          throw new Error(sendResult.error?.message ?? 'Resend did not return a message id');
+        }
 
-  for (let i = 0; i < households.length; i += 1) {
-    const household = households[i];
-    try {
-      const rsvpUrl = `${baseUrl}/rsvp?token=${household.invite_token}`;
-      const sendResult = await resend.emails.send({
-        from: 'Alannah & Rob <hello@alannah-rob.ie>',
-        to: household.contact_email as string,
-        subject: "You're invited — Alannah & Rob, 28 August 2026",
-        html: buildInviteEmailHtml(household.display_name as string, rsvpUrl, baseUrl),
-      });
-      if (sendResult.error || !sendResult.data?.id) {
-        throw new Error(sendResult.error?.message ?? 'Resend did not return a message id');
+        await sql`
+          UPDATE households
+          SET invited_at = now(), invite_failed_count = 0, last_invite_failed_at = NULL, last_invite_error = NULL
+          WHERE id = ${household.id}
+        `;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown invite send failure';
+        await sql`
+          UPDATE households
+          SET invite_failed_count = invite_failed_count + 1, last_invite_failed_at = now(), last_invite_error = ${message}
+          WHERE id = ${household.id}
+        `;
+        throw error;
       }
-
-      await sql`
-        UPDATE households
-        SET invited_at = now(), invite_failed_count = 0, last_invite_failed_at = NULL, last_invite_error = NULL
-        WHERE id = ${household.id}
-      `;
-      sent += 1;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown invite send failure';
-      await sql`
-        UPDATE households
-        SET invite_failed_count = invite_failed_count + 1, last_invite_failed_at = now(), last_invite_error = ${message}
-        WHERE id = ${household.id}
-      `;
-      failed += 1;
-    }
-
-    if (i < households.length - 1) {
-      await sleep(SEND_INTERVAL_MS);
-    }
-  }
+    },
+  });
 
   return NextResponse.json({
     sent,

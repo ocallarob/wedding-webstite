@@ -5,15 +5,12 @@ import { ADMIN_COOKIE_NAME, hasAdminAuth, isSameOriginRequest } from '../../../s
 import { createAdminSessionToken, SESSION_TTL_SECONDS } from '../../../src/lib/adminSession';
 import { verifyCsrfToken } from '../../../src/lib/csrf';
 import { buildInviteEmailHtml } from '../../../src/lib/inviteEmailHtml';
+import { runThrottledBatch } from '../../../src/lib/throttledBatch';
 
 export const dynamic = 'force-dynamic';
 const REMINDER_BATCH_LIMIT = 100;
 const SENDS_PER_SECOND = 5;
 const SEND_INTERVAL_MS = Math.ceil(1000 / SENDS_PER_SECOND);
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 function buildReminderEmailHtml(displayName: string, rsvpUrl: string, baseUrl: string): string {
   const assetBase = baseUrl.replace(/\/$/, '');
@@ -164,31 +161,27 @@ export async function POST(request: NextRequest) {
 
     if (rows.length === 0) return NextResponse.redirect(new URL('/dashboard?reminder=none', request.url));
 
-    let sent = 0;
-    let failed = 0;
-    for (let i = 0; i < rows.length; i += 1) {
-      const h = rows[i];
-      try {
-        const sendResult = await resend.emails.send({
-          from: 'Alannah & Rob <hello@alannah-rob.ie>',
-          to: h.contact_email as string,
-          subject: 'Kind reminder: RSVP for Alannah & Rob wedding',
-          html: buildReminderEmailHtml(h.display_name as string, `${baseUrl}/rsvp?token=${h.invite_token}`, baseUrl),
-        });
-        if (sendResult.error || !sendResult.data?.id) {
-          throw new Error(sendResult.error?.message ?? 'Resend did not return a message id');
+    const { sent, failed } = await runThrottledBatch({
+      items: rows,
+      intervalMs: SEND_INTERVAL_MS,
+      runItem: async (h) => {
+        try {
+          const sendResult = await resend.emails.send({
+            from: 'Alannah & Rob <hello@alannah-rob.ie>',
+            to: h.contact_email as string,
+            subject: 'Kind reminder: RSVP for Alannah & Rob wedding',
+            html: buildReminderEmailHtml(h.display_name as string, `${baseUrl}/rsvp?token=${h.invite_token}`, baseUrl),
+          });
+          if (sendResult.error || !sendResult.data?.id) {
+            throw new Error(sendResult.error?.message ?? 'Resend did not return a message id');
+          }
+          await sql`UPDATE households SET reminder_count = reminder_count + 1, last_reminder_at = now(), reminder_failed_count = 0, last_reminder_failed_at = NULL WHERE id = ${h.id}`;
+        } catch (error) {
+          await sql`UPDATE households SET reminder_failed_count = reminder_failed_count + 1, last_reminder_failed_at = now() WHERE id = ${h.id}`;
+          throw error;
         }
-        await sql`UPDATE households SET reminder_count = reminder_count + 1, last_reminder_at = now(), reminder_failed_count = 0, last_reminder_failed_at = NULL WHERE id = ${h.id}`;
-        sent += 1;
-      } catch (error) {
-        await sql`UPDATE households SET reminder_failed_count = reminder_failed_count + 1, last_reminder_failed_at = now() WHERE id = ${h.id}`;
-        failed += 1;
-      }
-
-      if (i < rows.length - 1) {
-        await sleep(SEND_INTERVAL_MS);
-      }
-    }
+      },
+    });
     return NextResponse.redirect(new URL(`/dashboard?reminder=done&sent=${sent}&failed=${failed}`, request.url));
   }
 
