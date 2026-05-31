@@ -78,6 +78,7 @@ function memberSummary(member: Member): string {
 
 export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: string }) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'coming' | 'not_coming' | 'no_response' | 'not_invited'>('all');
 
   const visibleRows = useMemo(() => {
     const sorted = [...rows].sort((a, b) => {
@@ -89,17 +90,27 @@ export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: st
     });
 
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return sorted;
 
     return sorted.filter((row) => {
       const name = householdName(row).toLowerCase();
-      return name.includes(query);
+      const matchesQuery = !query || name.includes(query);
+      if (!matchesQuery) return false;
+
+      if (statusFilter === 'all') return true;
+
+      const rowStatus = status(row);
+      if (statusFilter === 'coming') return rowStatus === 'Coming';
+      if (statusFilter === 'not_coming') return rowStatus === 'Not coming';
+      if (statusFilter === 'no_response') return rowStatus === 'Invited';
+      if (statusFilter === 'not_invited') return rowStatus === 'Not invited';
+      return true;
     });
-  }, [rows, searchQuery]);
+  }, [rows, searchQuery, statusFilter]);
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex w-full flex-col gap-3 md:flex-row md:items-center">
         <input
           type="search"
           value={searchQuery}
@@ -107,6 +118,19 @@ export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: st
           placeholder="Search household name"
           className="w-full max-w-lg rounded-xl border border-stone bg-white/90 px-3 py-2 text-sm text-charcoal placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-mauve/35"
         />
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value as 'all' | 'coming' | 'not_coming' | 'no_response' | 'not_invited')}
+            className="w-full md:w-56 rounded-xl border border-stone bg-white/90 px-3 py-2 text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-mauve/35"
+            aria-label="Filter by response status"
+          >
+            <option value="all">All response statuses</option>
+            <option value="coming">Coming</option>
+            <option value="not_coming">Not coming</option>
+            <option value="no_response">No response</option>
+            <option value="not_invited">Not invited</option>
+          </select>
+        </div>
         <p className="shrink-0 text-xs text-muted">{visibleRows.length} shown</p>
       </div>
 
@@ -163,7 +187,7 @@ export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: st
             ))}
             {visibleRows.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-muted">No households match this search.</td>
+                <td colSpan={9} className="px-4 py-10 text-center text-muted">No households match this search and filter.</td>
               </tr>
             )}
           </tbody>
