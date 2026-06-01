@@ -245,6 +245,10 @@ export const site = {
         answer: 'Please RSVP by Sunday, 28 June 2026.',
       },
       {
+        question: 'Can I edit my RSVP after I have submitted it?',
+        answer: 'Yes. You can update your invite details any time before the RSVP deadline by clicking the invite link in your email again.',
+      },
+      {
         question: 'Are children invited?',
         answer: "We're keeping the day for children aged 5 and over. If your child's name is not on your invitation, they are unfortunately not invited. Thank you so much for understanding!",
       },
