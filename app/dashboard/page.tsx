@@ -27,6 +27,9 @@ type Row = {
   last_invite_error: string | null;
   reminder_count: number;
   reminder_failed_count: number;
+  open_count: number;
+  first_opened_at: string | null;
+  last_opened_at: string | null;
   song: string | null;
   message: string | null;
   submitted_at: string | null;
@@ -82,6 +85,9 @@ export default async function DashboardPage({ searchParams }: Props) {
       h.last_invite_error,
       h.reminder_count,
       h.reminder_failed_count,
+      COALESCE(ho.open_count, 0) AS open_count,
+      ho.first_opened_at,
+      ho.last_opened_at,
       hr.song,
       hr.message,
       hr.submitted_at,
@@ -96,7 +102,16 @@ export default async function DashboardPage({ searchParams }: Props) {
     FROM households h
     LEFT JOIN household_members m ON m.household_id = h.id
     LEFT JOIN household_rsvps hr ON hr.household_id = h.id
-    GROUP BY h.id, hr.song, hr.message, hr.submitted_at
+    LEFT JOIN (
+      SELECT
+        household_id,
+        COUNT(*)::int AS open_count,
+        MIN(opened_at) AS first_opened_at,
+        MAX(opened_at) AS last_opened_at
+      FROM household_rsvp_opens
+      GROUP BY household_id
+    ) ho ON ho.household_id = h.id
+    GROUP BY h.id, hr.song, hr.message, hr.submitted_at, ho.open_count, ho.first_opened_at, ho.last_opened_at
   `) as Row[];
 
   const totalGuests = rows.reduce((sum, r) => sum + r.members.length, 0);

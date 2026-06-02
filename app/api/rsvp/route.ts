@@ -6,6 +6,7 @@ import { validateRsvpPayload } from '../../../src/lib/rsvpValidation';
 export const dynamic = 'force-dynamic';
 
 type DietaryValue = { options: string[]; other: string };
+let rsvpOpenTrackingAvailable = true;
 
 function normaliseDietary(input: unknown): DietaryValue {
   if (!input || typeof input !== 'object') return { options: [], other: '' };
@@ -13,6 +14,27 @@ function normaliseDietary(input: unknown): DietaryValue {
   const options = Array.isArray(source.options) ? source.options.filter((v): v is string => typeof v === 'string') : [];
   const other = typeof source.other === 'string' ? source.other : '';
   return { options, other };
+}
+
+async function trackRsvpOpen(request: NextRequest, householdId: string) {
+  if (!rsvpOpenTrackingAvailable) return;
+
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  const ip = forwardedFor?.split(',')[0]?.trim() || null;
+  const userAgent = request.headers.get('user-agent');
+
+  try {
+    await sql`
+      INSERT INTO household_rsvp_opens (household_id, ip_address, user_agent)
+      VALUES (${householdId}, ${ip}, ${userAgent || null})
+    `;
+  } catch (error) {
+    if (typeof error === 'object' && error && 'code' in error && error.code === '42P01') {
+      rsvpOpenTrackingAvailable = false;
+    }
+
+    // Tracking is best-effort only and should never block RSVP access.
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -28,22 +50,25 @@ export async function GET(request: NextRequest) {
     SELECT id, label, contact_email FROM households WHERE invite_token = ${token}
   `;
   if (!households[0]) return NextResponse.json({ error: 'Invalid invite link' }, { status: 404 });
+  const householdId = String(households[0].id);
+
+  await trackRsvpOpen(request, householdId);
 
   const members = await sql`
     SELECT id, full_name, member_type, attending_day1, attending_day2, dietary, sort_order
     FROM household_members
-    WHERE household_id = ${households[0].id}
+    WHERE household_id = ${householdId}
     ORDER BY sort_order, created_at
   `;
 
   const rsvp = await sql`
     SELECT submitted_at, song, message
     FROM household_rsvps
-    WHERE household_id = ${households[0].id}
+    WHERE household_id = ${householdId}
   `;
 
   return NextResponse.json({
-    household_id: households[0].id,
+    household_id: householdId,
     label: households[0].label,
     contact_email: households[0].contact_email,
     already_rsvpd: rsvp.length > 0,

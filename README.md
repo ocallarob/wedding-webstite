@@ -41,6 +41,7 @@ Current model (no legacy guest/partner dependency):
 - `households`
 - `household_members`
 - `household_rsvps`
+- `household_rsvp_opens`
 
 Run schema migration:
 
@@ -101,6 +102,7 @@ Behavior:
   - guest-level summary counts
   - household table
   - send status
+  - RSVP open tracking
   - one-click reminder batch
 
 Admin APIs:
