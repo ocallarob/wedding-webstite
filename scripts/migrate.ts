@@ -56,6 +56,21 @@ async function migrate() {
   `;
 
   await sql`
+    CREATE TABLE IF NOT EXISTS household_rsvp_opens (
+      id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      household_id          UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+      opened_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+      ip_address            TEXT,
+      user_agent            TEXT
+    )
+  `;
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS household_rsvp_opens_household_idx
+    ON household_rsvp_opens (household_id, opened_at DESC)
+  `;
+
+  await sql`
     CREATE TABLE IF NOT EXISTS api_rate_limits (
       key                   TEXT NOT NULL,
       window_start          TIMESTAMPTZ NOT NULL,

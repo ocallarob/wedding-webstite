@@ -94,6 +94,9 @@ export async function GET(request: NextRequest) {
       h.id, h.label, h.contact_email, h.invited_at,
       h.invite_failed_count, h.reminder_count, h.reminder_failed_count,
       hr.song, hr.message, hr.submitted_at,
+      COALESCE(ho.open_count, 0) AS open_count,
+      ho.first_opened_at,
+      ho.last_opened_at,
       COALESCE(json_agg(json_build_object(
         'id', m.id,
         'full_name', m.full_name,
@@ -106,7 +109,16 @@ export async function GET(request: NextRequest) {
     FROM households h
     LEFT JOIN household_members m ON m.household_id = h.id
     LEFT JOIN household_rsvps hr ON hr.household_id = h.id
-    GROUP BY h.id, hr.song, hr.message, hr.submitted_at
+    LEFT JOIN (
+      SELECT
+        household_id,
+        COUNT(*)::int AS open_count,
+        MIN(opened_at) AS first_opened_at,
+        MAX(opened_at) AS last_opened_at
+      FROM household_rsvp_opens
+      GROUP BY household_id
+    ) ho ON ho.household_id = h.id
+    GROUP BY h.id, hr.song, hr.message, hr.submitted_at, ho.open_count, ho.first_opened_at, ho.last_opened_at
     ORDER BY COALESCE(h.label, h.contact_email)
   `;
 
@@ -116,8 +128,9 @@ export async function GET(request: NextRequest) {
   const rsvpd_yes = households.filter((h) => h.submitted_at && anyAttending(h.members as any[])).length;
   const rsvpd_no = households.filter((h) => h.submitted_at && !anyAttending(h.members as any[])).length;
   const no_response = households.filter((h) => h.invited_at && !h.submitted_at).length;
+  const opened = households.filter((h) => Number(h.open_count ?? 0) > 0).length;
 
-  return NextResponse.json({ total, invited, rsvpd_yes, rsvpd_no, no_response, households });
+  return NextResponse.json({ total, invited, opened, rsvpd_yes, rsvpd_no, no_response, households });
 }
 
 export async function POST(request: NextRequest) {

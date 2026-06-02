@@ -22,6 +22,9 @@ type Row = {
   last_invite_error: string | null;
   reminder_count: number;
   reminder_failed_count: number;
+  open_count: number;
+  first_opened_at: string | null;
+  last_opened_at: string | null;
   song: string | null;
   message: string | null;
   submitted_at: string | null;
@@ -54,6 +57,21 @@ function sendStatus(row: Row): string {
   if (row.reminder_failed_count > 0) return `Reminder failed (${row.reminder_failed_count})`;
   if (row.reminder_count > 0) return `Reminder sent (${row.reminder_count})`;
   return 'Invite sent';
+}
+
+function formatDateTime(value: string | null): string {
+  if (!value) return '—';
+
+  return new Date(value).toLocaleString('en-GB', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+}
+
+function openStatus(row: Row): string {
+  if (row.open_count <= 0) return 'Not opened';
+  if (row.open_count === 1) return `Opened once on ${formatDateTime(row.last_opened_at)}`;
+  return `Last opened ${formatDateTime(row.last_opened_at)}`;
 }
 
 function yesNoDash(value: boolean | null): string {
@@ -138,7 +156,7 @@ export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: st
         <table className="w-full text-sm">
           <thead className="bg-stone/40 text-left">
             <tr>
-              {['Household', 'Contact Email', 'Invite Code', 'Paper Invite', 'Status', 'Send Status', 'Members', 'Song', 'Message'].map((h) => (
+              {['Household', 'Contact Email', 'Invite Code', 'Paper Invite', 'Status', 'Send Status', 'Opened RSVP', 'Members', 'Song', 'Message'].map((h) => (
                 <th key={h} className="px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-muted font-normal whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -172,6 +190,10 @@ export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: st
                     </button>
                   </form>
                 </td>
+                <td className="px-4 py-3 text-xs text-muted min-w-[240px]">
+                  <p>{openStatus(row)}</p>
+                  {row.open_count > 1 ? <p className="mt-1">First opened {formatDateTime(row.first_opened_at)}</p> : null}
+                </td>
                 <td className="px-4 py-3 text-xs text-muted min-w-[340px]">
                   <div className="space-y-1">
                     {row.members.map((m, idx) => <p key={`${row.id}-m-${idx}`}>{memberSummary(m)}</p>)}
@@ -187,7 +209,7 @@ export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: st
             ))}
             {visibleRows.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-muted">No households match this search and filter.</td>
+                <td colSpan={10} className="px-4 py-10 text-center text-muted">No households match this search and filter.</td>
               </tr>
             )}
           </tbody>
