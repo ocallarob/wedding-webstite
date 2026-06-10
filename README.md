@@ -84,6 +84,19 @@ Behavior:
 - Upsert household by `contact_email`, or by `address_line_one` for paper invites without email
 - Replace member rows for imported households
 
+Private address update:
+
+```bash
+pnpm tsx --env-file=.env.local scripts/update-household-addresses.ts private/households-append.csv
+pnpm db:update-household-addresses
+```
+
+Behavior:
+- Reads the same CSV structure
+- Skips rows without `address_line_one`
+- Overwrites `households.address_line_one` for matched rows
+- Matches email rows by `contact_email`; matches paper rows without email by label/member list or current address
+
 ## Core Routes
 
 - `/rsvp?token=...`  
