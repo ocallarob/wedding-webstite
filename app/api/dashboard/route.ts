@@ -124,10 +124,10 @@ export async function GET(request: NextRequest) {
 
   const anyAttending = (members: any[]) => members.some((m) => m.attending_day1 || m.attending_day2);
   const total = households.length;
-  const invited = households.filter((h) => h.invited_at).length;
+  const invited = households.filter((h) => h.invited_at || h.is_paper_invite).length;
   const rsvpd_yes = households.filter((h) => h.submitted_at && anyAttending(h.members as any[])).length;
   const rsvpd_no = households.filter((h) => h.submitted_at && !anyAttending(h.members as any[])).length;
-  const no_response = households.filter((h) => h.invited_at && !h.submitted_at).length;
+  const no_response = households.filter((h) => (h.invited_at || h.is_paper_invite) && !h.submitted_at).length;
   const opened = households.filter((h) => Number(h.open_count ?? 0) > 0).length;
 
   return NextResponse.json({ total, invited, opened, rsvpd_yes, rsvpd_no, no_response, households });

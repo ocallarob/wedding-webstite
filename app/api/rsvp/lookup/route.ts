@@ -9,12 +9,19 @@ function normaliseQuery(input: unknown): string {
   return input.trim().replace(/\s+/g, ' ');
 }
 
+function foldSearchText(input: string): string {
+  return input
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
 function scoreMatch(query: string, label: string, addressLineOne: string, memberNames: string[]): number {
-  const q = query.toLowerCase();
+  const q = foldSearchText(query);
   let score = 0;
-  const labelLc = label.toLowerCase();
-  const addressLc = addressLineOne.toLowerCase();
-  const namesLc = memberNames.map((n) => n.toLowerCase());
+  const labelLc = foldSearchText(label);
+  const addressLc = foldSearchText(addressLineOne);
+  const namesLc = memberNames.map((n) => foldSearchText(n));
 
   if (labelLc === q || addressLc === q || namesLc.some((n) => n === q)) score += 100;
   if (labelLc.startsWith(q) || addressLc.startsWith(q) || namesLc.some((n) => n.startsWith(q))) score += 20;
@@ -44,7 +51,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
   }
 
-  const term = `%${query.toLowerCase()}%`;
+  const term = `%${foldSearchText(query)}%`;
   const rows = await sql`
     SELECT
       h.invite_token,
@@ -55,9 +62,9 @@ export async function POST(request: NextRequest) {
     JOIN household_members m ON m.household_id = h.id
     WHERE h.is_paper_invite = true
       AND (
-           lower(m.full_name) LIKE ${term}
-       OR lower(COALESCE(h.label, '')) LIKE ${term}
-       OR lower(COALESCE(h.address_line_one, '')) LIKE ${term}
+           translate(lower(m.full_name), 'áéíóúÁÉÍÓÚ', 'aeiouaeiou') LIKE ${term}
+       OR translate(lower(COALESCE(h.label, '')), 'áéíóúÁÉÍÓÚ', 'aeiouaeiou') LIKE ${term}
+       OR translate(lower(COALESCE(h.address_line_one, '')), 'áéíóúÁÉÍÓÚ', 'aeiouaeiou') LIKE ${term}
       )
     GROUP BY h.id
     ORDER BY h.created_at DESC

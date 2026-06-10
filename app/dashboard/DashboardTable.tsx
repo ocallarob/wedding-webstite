@@ -48,11 +48,12 @@ function status(row: Row): string {
   const anyAttending = row.members.some((m) => m.attending_day1 || m.attending_day2);
   if (row.submitted_at && anyAttending) return 'Coming';
   if (row.submitted_at) return 'Not coming';
-  if (row.invited_at) return 'Invited';
+  if (row.invited_at || row.is_paper_invite) return 'Invited';
   return 'Not invited';
 }
 
 function sendStatus(row: Row): string {
+  if (row.is_paper_invite) return 'Paper invite';
   if (!row.invited_at) return row.invite_failed_count > 0 ? `Invite failed (${row.invite_failed_count})` : 'Not sent';
   if (row.submitted_at) return 'RSVP received';
   if (row.reminder_failed_count > 0) return `Reminder failed (${row.reminder_failed_count})`;
@@ -111,8 +112,16 @@ export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: st
     const query = searchQuery.trim().toLowerCase();
 
     return sorted.filter((row) => {
-      const name = householdName(row).toLowerCase();
-      const matchesQuery = !query || name.includes(query);
+      const searchable = [
+        householdName(row),
+        row.contact_email,
+        row.address_line_one,
+        ...row.members.map((member) => member.full_name),
+      ]
+        .filter((value): value is string => typeof value === 'string')
+        .join(' ')
+        .toLowerCase();
+      const matchesQuery = !query || searchable.includes(query);
       if (!matchesQuery) return false;
 
       if (statusFilter === 'all') return true;

@@ -117,7 +117,7 @@ export default async function DashboardPage({ searchParams }: Props) {
   `) as Row[];
 
   const totalGuests = rows.reduce((sum, r) => sum + r.members.length, 0);
-  const invitedGuests = rows.reduce((sum, r) => sum + (r.invited_at ? r.members.length : 0), 0);
+  const invitedGuests = rows.reduce((sum, r) => sum + (r.invited_at || r.is_paper_invite ? r.members.length : 0), 0);
   const comingGuests = rows.reduce(
     (sum, r) => sum + (r.submitted_at ? r.members.filter((m) => !!(m.attending_day1 || m.attending_day2)).length : 0),
     0
@@ -127,7 +127,7 @@ export default async function DashboardPage({ searchParams }: Props) {
     0
   );
   const noResponseGuests = rows.reduce(
-    (sum, r) => sum + (r.invited_at && !r.submitted_at ? r.members.length : 0),
+    (sum, r) => sum + ((r.invited_at || r.is_paper_invite) && !r.submitted_at ? r.members.length : 0),
     0
   );
 
