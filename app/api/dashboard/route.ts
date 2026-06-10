@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
 
   const households = await sql`
     SELECT
-      h.id, h.label, h.contact_email, h.invited_at,
+      h.id, h.label, h.contact_email, h.address_line_one, h.is_paper_invite, h.invited_at,
       h.invite_failed_count, h.reminder_count, h.reminder_failed_count,
       hr.song, hr.message, hr.submitted_at,
       COALESCE(ho.open_count, 0) AS open_count,
@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
       GROUP BY household_id
     ) ho ON ho.household_id = h.id
     GROUP BY h.id, hr.song, hr.message, hr.submitted_at, ho.open_count, ho.first_opened_at, ho.last_opened_at
-    ORDER BY COALESCE(h.label, h.contact_email)
+    ORDER BY COALESCE(h.label, h.contact_email, h.address_line_one)
   `;
 
   const anyAttending = (members: any[]) => members.some((m) => m.attending_day1 || m.attending_day2);
@@ -167,7 +167,10 @@ export async function POST(request: NextRequest) {
         COALESCE((SELECT string_agg(m.full_name, ' & ' ORDER BY m.sort_order, m.created_at) FROM household_members m WHERE m.household_id = h.id), h.contact_email) as display_name
       FROM households h
       LEFT JOIN household_rsvps hr ON hr.household_id = h.id
-      WHERE h.invited_at IS NOT NULL AND hr.household_id IS NULL
+      WHERE h.invited_at IS NOT NULL
+        AND h.is_paper_invite = false
+        AND h.contact_email IS NOT NULL
+        AND hr.household_id IS NULL
       ORDER BY COALESCE(h.label, h.contact_email)
       LIMIT ${REMINDER_BATCH_LIMIT}
     `;
@@ -217,6 +220,8 @@ export async function POST(request: NextRequest) {
         ), h.contact_email) as display_name
       FROM households h
       WHERE h.id = ${householdId}
+        AND h.is_paper_invite = false
+        AND h.contact_email IS NOT NULL
       LIMIT 1
     `;
     const household = rows[0];

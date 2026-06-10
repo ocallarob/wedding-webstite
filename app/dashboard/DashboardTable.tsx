@@ -14,7 +14,8 @@ type Member = {
 type Row = {
   id: string;
   label: string | null;
-  contact_email: string;
+  contact_email: string | null;
+  address_line_one: string | null;
   invite_token: string;
   is_paper_invite: boolean;
   invited_at: string | null;
@@ -34,7 +35,7 @@ type Row = {
 function householdName(row: Row): string {
   if (row.label?.trim()) return row.label.trim();
   if (row.members.length > 0) return row.members.map((m) => m.full_name).join(' & ');
-  return row.contact_email;
+  return row.contact_email ?? row.address_line_one ?? 'Unknown household';
 }
 
 function surnameKey(name: string): string {
@@ -156,7 +157,7 @@ export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: st
         <table className="w-full text-sm">
           <thead className="bg-stone/40 text-left">
             <tr>
-              {['Household', 'Contact Email', 'Invite Code', 'Paper Invite', 'Status', 'Send Status', 'Opened RSVP', 'Members', 'Song', 'Message'].map((h) => (
+              {['Household', 'Contact', 'Invite Code', 'Paper Invite', 'Status', 'Send Status', 'Opened RSVP', 'Members', 'Song', 'Message'].map((h) => (
                 <th key={h} className="px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-muted font-normal whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -165,7 +166,9 @@ export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: st
             {visibleRows.map((row) => (
               <tr key={row.id} className="bg-ivory/60 hover:bg-stone/20 transition-colors align-top">
                 <td className="px-4 py-3 font-medium text-charcoal whitespace-nowrap">{householdName(row)}</td>
-                <td className="px-4 py-3 text-muted">{row.contact_email}</td>
+                <td className="px-4 py-3 text-muted">
+                  {row.is_paper_invite ? row.address_line_one ?? '—' : row.contact_email ?? '—'}
+                </td>
                 <td className="px-4 py-3 text-muted whitespace-nowrap">
                   <details>
                     <summary className="cursor-pointer text-xs text-mauve underline-offset-4 hover:underline">Show code</summary>
@@ -181,14 +184,16 @@ export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: st
                   {row.last_invite_error ? (
                     <p className="mt-1 text-red-700 break-words">{row.last_invite_error}</p>
                   ) : null}
-                  <form action="/api/dashboard" method="POST" className="mt-2">
-                    <input type="hidden" name="action" value="resend_invite" />
-                    <input type="hidden" name="csrf_token" value={csrfToken} />
-                    <input type="hidden" name="household_id" value={row.id} />
-                    <button type="submit" className="text-[11px] text-mauve underline-offset-4 hover:underline hover:text-charcoal transition-colors">
-                      Resend invite
-                    </button>
-                  </form>
+                  {!row.is_paper_invite && row.contact_email ? (
+                    <form action="/api/dashboard" method="POST" className="mt-2">
+                      <input type="hidden" name="action" value="resend_invite" />
+                      <input type="hidden" name="csrf_token" value={csrfToken} />
+                      <input type="hidden" name="household_id" value={row.id} />
+                      <button type="submit" className="text-[11px] text-mauve underline-offset-4 hover:underline hover:text-charcoal transition-colors">
+                        Resend invite
+                      </button>
+                    </form>
+                  ) : null}
                 </td>
                 <td className="px-4 py-3 text-xs text-muted min-w-[240px]">
                   <p>{openStatus(row)}</p>

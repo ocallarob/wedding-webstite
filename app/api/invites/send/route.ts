@@ -23,6 +23,8 @@ export async function POST(request: NextRequest) {
       ), h.contact_email) as display_name
     FROM households h
     WHERE h.invited_at IS NULL
+      AND h.is_paper_invite = false
+      AND h.contact_email IS NOT NULL
   `;
 
   if (allUninvited.length === 0) {

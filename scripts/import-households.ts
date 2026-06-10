@@ -4,6 +4,7 @@ import { neon } from '@neondatabase/serverless';
 
 type InputRow = {
   contact_email: string;
+  address_line_one: string;
   label: string;
   members: string[];
   member_types: string[];
@@ -53,13 +54,14 @@ function parseRows(csv: string): InputRow[] {
   }
 
   const header = parseCsvLine(lines[0]).map((h) => h.toLowerCase());
-  const required = ['contact_email', 'label', 'members'];
+  const required = ['label', 'members'];
   for (const key of required) {
     if (!header.includes(key)) throw new Error(`Missing required column: ${key}`);
   }
 
   const idx = {
     contact_email: header.indexOf('contact_email'),
+    address_line_one: header.indexOf('address_line_one'),
     label: header.indexOf('label'),
     members: header.indexOf('members'),
     member_types: header.indexOf('member_types'),
@@ -70,13 +72,18 @@ function parseRows(csv: string): InputRow[] {
 
   for (let i = 1; i < lines.length; i += 1) {
     const cols = parseCsvLine(lines[i]);
-    const contactEmail = (cols[idx.contact_email] ?? '').trim().toLowerCase();
+    const contactEmail = idx.contact_email >= 0 ? (cols[idx.contact_email] ?? '').trim().toLowerCase() : '';
+    const addressLineOne = idx.address_line_one >= 0 ? (cols[idx.address_line_one] ?? '').trim() : '';
     const label = (cols[idx.label] ?? '').trim();
     const membersRaw = (cols[idx.members] ?? '').trim();
     const memberTypesRaw = idx.member_types >= 0 ? (cols[idx.member_types] ?? '').trim() : '';
     const isPaperInviteRaw = idx.is_paper_invite >= 0 ? (cols[idx.is_paper_invite] ?? '').trim().toLowerCase() : '';
 
-    if (!contactEmail) throw new Error(`Row ${i + 1}: contact_email is required`);
+    const isPaperInvite = isPaperInviteRaw === 'true' || isPaperInviteRaw === '1' || isPaperInviteRaw === 'yes';
+    if (!isPaperInvite && !contactEmail) throw new Error(`Row ${i + 1}: contact_email is required for email invites`);
+    if (isPaperInvite && !contactEmail && !addressLineOne) {
+      throw new Error(`Row ${i + 1}: address_line_one is required when contact_email is blank`);
+    }
     if (!membersRaw) throw new Error(`Row ${i + 1}: members is required`);
 
     const members = membersRaw.split('|').map((s) => s.trim()).filter(Boolean);
@@ -88,10 +95,11 @@ function parseRows(csv: string): InputRow[] {
 
     rows.push({
       contact_email: contactEmail,
+      address_line_one: addressLineOne,
       label,
       members,
       member_types: memberTypes,
-      is_paper_invite: isPaperInviteRaw === 'true' || isPaperInviteRaw === '1' || isPaperInviteRaw === 'yes',
+      is_paper_invite: isPaperInvite,
     });
   }
 
@@ -103,14 +111,22 @@ function asMemberType(raw: string | undefined): 'adult' | 'child' {
 }
 
 async function upsertHousehold(row: InputRow): Promise<void> {
-  const inserted = await sql`
-    INSERT INTO households (contact_email, label, is_paper_invite)
-    VALUES (${row.contact_email}, ${row.label || null}, ${row.is_paper_invite})
-    ON CONFLICT (contact_email) DO UPDATE SET
-      label = EXCLUDED.label,
-      is_paper_invite = EXCLUDED.is_paper_invite
-    RETURNING id
-  `;
+  const existing = await findExistingHousehold(row);
+  const inserted = existing.length > 0
+    ? await sql`
+        UPDATE households
+        SET contact_email = ${row.contact_email || null},
+          address_line_one = ${row.address_line_one || null},
+          label = ${row.label || null},
+          is_paper_invite = ${row.is_paper_invite}
+        WHERE id = ${existing[0].id}
+        RETURNING id
+      `
+    : await sql`
+        INSERT INTO households (contact_email, address_line_one, label, is_paper_invite)
+        VALUES (${row.contact_email || null}, ${row.address_line_one || null}, ${row.label || null}, ${row.is_paper_invite})
+        RETURNING id
+      `;
 
   const householdId = inserted[0].id as string;
   await sql`DELETE FROM household_members WHERE household_id = ${householdId}`;
@@ -126,18 +142,13 @@ async function upsertHousehold(row: InputRow): Promise<void> {
 }
 
 async function insertOnlyHousehold(row: InputRow): Promise<'inserted' | 'skipped'> {
-  const existing = await sql`
-    SELECT id
-    FROM households
-    WHERE contact_email = ${row.contact_email}
-    LIMIT 1
-  `;
+  const existing = await findExistingHousehold(row);
 
   if (existing.length > 0) return 'skipped';
 
   const inserted = await sql`
-    INSERT INTO households (contact_email, label, is_paper_invite)
-    VALUES (${row.contact_email}, ${row.label || null}, ${row.is_paper_invite})
+    INSERT INTO households (contact_email, address_line_one, label, is_paper_invite)
+    VALUES (${row.contact_email || null}, ${row.address_line_one || null}, ${row.label || null}, ${row.is_paper_invite})
     RETURNING id
   `;
 
@@ -153,6 +164,25 @@ async function insertOnlyHousehold(row: InputRow): Promise<'inserted' | 'skipped
   }
 
   return 'inserted';
+}
+
+async function findExistingHousehold(row: InputRow) {
+  if (row.contact_email) {
+    return sql`
+      SELECT id
+      FROM households
+      WHERE contact_email = ${row.contact_email}
+      LIMIT 1
+    `;
+  }
+
+  return sql`
+    SELECT id
+    FROM households
+    WHERE is_paper_invite = true
+      AND lower(address_line_one) = lower(${row.address_line_one})
+    LIMIT 1
+  `;
 }
 
 async function main() {
@@ -171,7 +201,7 @@ async function main() {
 
   console.log(`Parsed ${rows.length} households from ${csvPath}`);
   for (const r of rows) {
-    console.log(`- ${r.contact_email} | ${r.label || '(no label)'} | members: ${r.members.join(', ')}`);
+    console.log(`- ${r.contact_email || r.address_line_one} | ${r.label || '(no label)'} | members: ${r.members.join(', ')}`);
   }
 
   if (!apply) {

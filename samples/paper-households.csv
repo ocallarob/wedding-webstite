@@ -1,8 +1,8 @@
-contact_email,label,members,member_types,is_paper_invite
-alannah.rob@example.com,Alannah & Rob O'Callaghan,Alannah Leonard|Rob O'Callaghan,adult|adult,true
-fiona.johnny@example.com,Fiona & Johnny Leonard,Fiona Leonard|Johnny Leonard,adult|adult,true
-caoimhe.james@example.com,Caoimhe & James Leonard,Caoimhe Leonard|James Leonard,adult|adult,false
-caragh@example.com,Caragh Leonard,Caragh Leonard,adult,false
-ruairi@example.com,Ruairi Leonard,Ruairi Leonard,adult,false
-mary.seamus@example.com,Mary & Seamus O'Callaghan,Mary O'Callaghan|Seamus O'Callaghan,adult|adult,true
-anne.pat@example.com,Anne & Pat O'Flanagan,Anne O'Flanagan|Pat O'Flanagan,adult|adult,true
+contact_email,address_line_one,label,members,member_types,is_paper_invite
+,1 Menlo Park,Alannah & Rob O'Callaghan,Alannah Leonard|Rob O'Callaghan,adult|adult,true
+,2 Menlo Park,Fiona & Johnny Leonard,Fiona Leonard|Johnny Leonard,adult|adult,true
+caoimhe.james@example.com,,Caoimhe & James Leonard,Caoimhe Leonard|James Leonard,adult|adult,false
+caragh@example.com,,Caragh Leonard,Caragh Leonard,adult,false
+ruairi@example.com,,Ruairi Leonard,Ruairi Leonard,adult,false
+,3 Devenish Road,Mary & Seamus O'Callaghan,Mary O'Callaghan|Seamus O'Callaghan,adult|adult,true
+,4 Devenish Road,Anne & Pat O'Flanagan,Anne O'Flanagan|Pat O'Flanagan,adult|adult,true

@@ -19,7 +19,8 @@ type Member = {
 type Row = {
   id: string;
   label: string | null;
-  contact_email: string;
+  contact_email: string | null;
+  address_line_one: string | null;
   invite_token: string;
   is_paper_invite: boolean;
   invited_at: string | null;
@@ -78,6 +79,7 @@ export default async function DashboardPage({ searchParams }: Props) {
       h.id,
       h.label,
       h.contact_email,
+      h.address_line_one,
       h.invite_token,
       h.is_paper_invite,
       h.invited_at,

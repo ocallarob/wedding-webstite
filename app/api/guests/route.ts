@@ -8,13 +8,13 @@ export async function GET(request: NextRequest) {
   if (!hasAdminAuth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const rows = await sql`
-    SELECT h.id, h.label, h.contact_email, h.is_paper_invite,
+    SELECT h.id, h.label, h.contact_email, h.address_line_one, h.is_paper_invite,
       COALESCE(json_agg(json_build_object('id', m.id, 'full_name', m.full_name, 'member_type', m.member_type, 'sort_order', m.sort_order)
       ORDER BY m.sort_order, m.created_at) FILTER (WHERE m.id IS NOT NULL), '[]'::json) AS members
     FROM households h
     LEFT JOIN household_members m ON m.household_id = h.id
     GROUP BY h.id
-    ORDER BY COALESCE(h.label, h.contact_email)
+    ORDER BY COALESCE(h.label, h.contact_email, h.address_line_one)
   `;
 
   return NextResponse.json({ households: rows });
@@ -26,24 +26,45 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const contactEmail = String(body.contact_email ?? '').trim().toLowerCase();
+  const addressLineOne = String(body.address_line_one ?? '').trim();
   const label = String(body.label ?? '').trim() || null;
   const isPaperInvite = Boolean(body.is_paper_invite);
   const members = Array.isArray(body.members) ? body.members : [];
 
-  if (!contactEmail) return NextResponse.json({ error: 'contact_email required' }, { status: 400 });
+  if (!isPaperInvite && !contactEmail) return NextResponse.json({ error: 'contact_email required' }, { status: 400 });
+  if (isPaperInvite && !contactEmail && !addressLineOne) {
+    return NextResponse.json({ error: 'address_line_one required for paper invites without email' }, { status: 400 });
+  }
   if (members.length === 0) return NextResponse.json({ error: 'at least one member required' }, { status: 400 });
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(contactEmail)) return NextResponse.json({ error: 'invalid email address' }, { status: 400 });
+  if (contactEmail && !emailRegex.test(contactEmail)) return NextResponse.json({ error: 'invalid email address' }, { status: 400 });
 
-  const inserted = await sql`
-    INSERT INTO households (contact_email, label, is_paper_invite)
-    VALUES (${contactEmail}, ${label}, ${isPaperInvite})
-    ON CONFLICT (contact_email) DO UPDATE SET
-      label = EXCLUDED.label,
-      is_paper_invite = EXCLUDED.is_paper_invite
-    RETURNING id
-  `;
+  const existing = contactEmail
+    ? await sql`SELECT id FROM households WHERE contact_email = ${contactEmail} LIMIT 1`
+    : await sql`
+        SELECT id
+        FROM households
+        WHERE is_paper_invite = true
+          AND lower(address_line_one) = lower(${addressLineOne})
+        LIMIT 1
+      `;
+
+  const inserted = existing.length > 0
+    ? await sql`
+        UPDATE households
+        SET contact_email = ${contactEmail || null},
+          address_line_one = ${addressLineOne || null},
+          label = ${label},
+          is_paper_invite = ${isPaperInvite}
+        WHERE id = ${existing[0].id}
+        RETURNING id
+      `
+    : await sql`
+        INSERT INTO households (contact_email, address_line_one, label, is_paper_invite)
+        VALUES (${contactEmail || null}, ${addressLineOne || null}, ${label}, ${isPaperInvite})
+        RETURNING id
+      `;
 
   const householdId = inserted[0].id as string;
   await sql`DELETE FROM household_members WHERE household_id = ${householdId}`;

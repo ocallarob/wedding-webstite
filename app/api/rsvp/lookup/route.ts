@@ -9,23 +9,16 @@ function normaliseQuery(input: unknown): string {
   return input.trim().replace(/\s+/g, ' ');
 }
 
-function maskEmail(email: string): string {
-  const [local = '', domain = ''] = email.split('@');
-  if (!local || !domain) return email;
-  if (local.length <= 2) return `${local[0] ?? '*'}*@${domain}`;
-  return `${local.slice(0, 2)}***@${domain}`;
-}
-
-function scoreMatch(query: string, label: string, email: string, memberNames: string[]): number {
+function scoreMatch(query: string, label: string, addressLineOne: string, memberNames: string[]): number {
   const q = query.toLowerCase();
   let score = 0;
   const labelLc = label.toLowerCase();
-  const emailLc = email.toLowerCase();
+  const addressLc = addressLineOne.toLowerCase();
   const namesLc = memberNames.map((n) => n.toLowerCase());
 
-  if (labelLc === q || emailLc === q || namesLc.some((n) => n === q)) score += 100;
-  if (labelLc.startsWith(q) || emailLc.startsWith(q) || namesLc.some((n) => n.startsWith(q))) score += 20;
-  if (labelLc.includes(q) || emailLc.includes(q) || namesLc.some((n) => n.includes(q))) score += 5;
+  if (labelLc === q || addressLc === q || namesLc.some((n) => n === q)) score += 100;
+  if (labelLc.startsWith(q) || addressLc.startsWith(q) || namesLc.some((n) => n.startsWith(q))) score += 20;
+  if (labelLc.includes(q) || addressLc.includes(q) || namesLc.some((n) => n.includes(q))) score += 5;
   return score;
 }
 
@@ -56,7 +49,7 @@ export async function POST(request: NextRequest) {
     SELECT
       h.invite_token,
       h.label,
-      h.contact_email,
+      h.address_line_one,
       array_agg(m.full_name ORDER BY m.sort_order, m.created_at) AS member_names
     FROM households h
     JOIN household_members m ON m.household_id = h.id
@@ -64,7 +57,7 @@ export async function POST(request: NextRequest) {
       AND (
            lower(m.full_name) LIKE ${term}
        OR lower(COALESCE(h.label, '')) LIKE ${term}
-       OR lower(h.contact_email) LIKE ${term}
+       OR lower(COALESCE(h.address_line_one, '')) LIKE ${term}
       )
     GROUP BY h.id
     ORDER BY h.created_at DESC
@@ -75,9 +68,9 @@ export async function POST(request: NextRequest) {
     .map((row) => ({
       token: row.invite_token,
       label: row.label,
-      contact_email_masked: maskEmail(String(row.contact_email ?? '')),
+      address_line_one: row.address_line_one,
       member_names: Array.isArray(row.member_names) ? row.member_names : [],
-      _score: scoreMatch(query, String(row.label ?? ''), String(row.contact_email ?? ''), Array.isArray(row.member_names) ? row.member_names : []),
+      _score: scoreMatch(query, String(row.label ?? ''), String(row.address_line_one ?? ''), Array.isArray(row.member_names) ? row.member_names : []),
     }))
     .sort((a, b) => b._score - a._score);
 
@@ -88,7 +81,7 @@ export async function POST(request: NextRequest) {
     match: {
       token: best.token,
       label: best.label,
-      contact_email_masked: best.contact_email_masked,
+      address_line_one: best.address_line_one,
       member_names: best.member_names,
     },
   });

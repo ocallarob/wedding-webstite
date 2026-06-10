@@ -5,7 +5,7 @@ import { FormEvent, useState } from 'react';
 type Match = {
   token: string;
   label: string | null;
-  contact_email_masked: string;
+  address_line_one: string | null;
   member_names: string[];
 };
 
@@ -51,7 +51,7 @@ export function PaperRsvpLookup({ code }: Props) {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Name, surname, or email"
+              placeholder="Name, surname, or address"
               className="w-full rounded-xl border border-stone bg-white px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-mauve/35 focus:ring-offset-1 focus:ring-offset-[#fffaf8]"
             />
           </label>
@@ -74,7 +74,9 @@ export function PaperRsvpLookup({ code }: Props) {
                 {match.label?.trim() || match.member_names.join(' & ')}
               </p>
               <p className="mt-1 text-xs text-muted">{match.member_names.join(', ')}</p>
-              <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-muted">{match.contact_email_masked}</p>
+              {match.address_line_one && (
+                <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-muted">{match.address_line_one}</p>
+              )}
             </a>
           </div>
         )}
