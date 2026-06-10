@@ -19,7 +19,8 @@ type Member = {
 type Row = {
   id: string;
   label: string | null;
-  contact_email: string;
+  contact_email: string | null;
+  address_line_one: string | null;
   invite_token: string;
   is_paper_invite: boolean;
   invited_at: string | null;
@@ -78,6 +79,7 @@ export default async function DashboardPage({ searchParams }: Props) {
       h.id,
       h.label,
       h.contact_email,
+      h.address_line_one,
       h.invite_token,
       h.is_paper_invite,
       h.invited_at,
@@ -115,7 +117,7 @@ export default async function DashboardPage({ searchParams }: Props) {
   `) as Row[];
 
   const totalGuests = rows.reduce((sum, r) => sum + r.members.length, 0);
-  const invitedGuests = rows.reduce((sum, r) => sum + (r.invited_at ? r.members.length : 0), 0);
+  const invitedGuests = rows.reduce((sum, r) => sum + (r.invited_at || r.is_paper_invite ? r.members.length : 0), 0);
   const comingGuests = rows.reduce(
     (sum, r) => sum + (r.submitted_at ? r.members.filter((m) => !!(m.attending_day1 || m.attending_day2)).length : 0),
     0
@@ -125,7 +127,7 @@ export default async function DashboardPage({ searchParams }: Props) {
     0
   );
   const noResponseGuests = rows.reduce(
-    (sum, r) => sum + (r.invited_at && !r.submitted_at ? r.members.length : 0),
+    (sum, r) => sum + ((r.invited_at || r.is_paper_invite) && !r.submitted_at ? r.members.length : 0),
     0
   );
 

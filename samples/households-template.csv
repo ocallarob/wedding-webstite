@@ -1,3 +1,5 @@
-contact_email,label,members,member_types,is_paper_invite
-family.one@example.com,Smith Family,John Smith|Jane Smith|Tommy Smith,adult|adult|child,false
-single.guest@example.com,Aoife,Aoife Murphy,adult,true
+contact_email,address_line_one,label,members,member_types,is_paper_invite
+family.one@example.com,,Smith Family,John Smith|Jane Smith|Tommy Smith,adult|adult|child,false
+single.guest@example.com,,Aoife,Aoife Murphy,adult,false
+,1 Paper Lane,Paper Household,Alex Paper|Sam Paper,adult|adult,true
+,2 Paper Lane,Paper Family,Casey Paper|Riley Paper|Jamie Paper,adult|adult|child,true
