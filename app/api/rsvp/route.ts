@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
   }
 
   const households = await sql`
-    SELECT id, label, contact_email FROM households WHERE invite_token = ${token}
+    SELECT id, label, contact_email, evening_invite FROM households WHERE invite_token = ${token}
   `;
   if (!households[0]) return NextResponse.json({ error: 'Invalid invite link' }, { status: 404 });
   const householdId = String(households[0].id);
@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
     household_id: householdId,
     label: households[0].label,
     contact_email: households[0].contact_email,
+    evening_invite: households[0].evening_invite === true,
     already_rsvpd: rsvp.length > 0,
     song: (rsvp[0]?.song as string | null) ?? '',
     message: (rsvp[0]?.message as string | null) ?? '',
@@ -96,9 +97,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
   }
 
-  const households = await sql`SELECT id FROM households WHERE invite_token = ${token}`;
+  const households = await sql`SELECT id, evening_invite FROM households WHERE invite_token = ${token}`;
   if (!households[0]) return NextResponse.json({ error: 'Invalid invite link' }, { status: 404 });
   const householdId = households[0].id as string;
+  const isEveningGuest = households[0].evening_invite === true;
 
   const allowedMembers = await sql`
     SELECT id FROM household_members WHERE household_id = ${householdId}
@@ -118,11 +120,12 @@ export async function POST(request: Request) {
     }
     seen.add(member.id);
     const dietary = normaliseDietary(member.dietary);
+    const attendingDay2 = isEveningGuest ? false : member.attending_day2;
     await sql`
       UPDATE household_members
       SET
         attending_day1 = ${member.attending_day1},
-        attending_day2 = ${member.attending_day2},
+        attending_day2 = ${attendingDay2},
         dietary = ${JSON.stringify(dietary)}::jsonb
       WHERE id = ${member.id} AND household_id = ${householdId}
     `;

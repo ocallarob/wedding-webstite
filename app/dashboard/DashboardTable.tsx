@@ -16,6 +16,7 @@ type Row = {
   label: string | null;
   contact_email: string | null;
   address_line_one: string | null;
+  evening_invite: boolean;
   invite_token: string;
   is_paper_invite: boolean;
   invited_at: string | null;
@@ -90,10 +91,17 @@ function normaliseDietary(input: unknown): { options: string[]; other: string } 
   return { options, other };
 }
 
-function memberSummary(member: Member): string {
+function memberSummary(member: Member, eveningInvite: boolean): string {
   const d = normaliseDietary(member.dietary);
   const dietary = [...d.options.map((o) => o.toUpperCase()), d.other.trim()].filter(Boolean).join(', ') || '—';
+  if (eveningInvite) {
+    return `${member.full_name} (${member.member_type}) · Evening: ${yesNoDash(member.attending_day1)} · Dietary: ${dietary}`;
+  }
   return `${member.full_name} (${member.member_type}) · D1: ${yesNoDash(member.attending_day1)} · D2: ${yesNoDash(member.attending_day2)} · Dietary: ${dietary}`;
+}
+
+function guestTypeLabel(eveningInvite: boolean): string {
+  return eveningInvite ? 'Evening' : 'Day';
 }
 
 export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: string }) {
@@ -166,7 +174,7 @@ export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: st
         <table className="w-full text-sm">
           <thead className="bg-stone/40 text-left">
             <tr>
-              {['Household', 'Contact', 'Invite Code', 'Paper Invite', 'Status', 'Send Status', 'Opened RSVP', 'Members', 'Song', 'Message'].map((h) => (
+              {['Household', 'Contact', 'Invite Code', 'Guest Type', 'Paper Invite', 'Status', 'Send Status', 'Opened RSVP', 'Members', 'Song', 'Message'].map((h) => (
                 <th key={h} className="px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-muted font-normal whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -186,6 +194,7 @@ export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: st
                     </code>
                   </details>
                 </td>
+                <td className="px-4 py-3 text-muted whitespace-nowrap">{guestTypeLabel(row.evening_invite)}</td>
                 <td className="px-4 py-3 text-muted whitespace-nowrap">{row.is_paper_invite ? 'Yes' : 'No'}</td>
                 <td className="px-4 py-3 text-muted whitespace-nowrap">{status(row)}</td>
                 <td className="px-4 py-3 text-xs text-muted min-w-[320px]">
@@ -210,7 +219,7 @@ export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: st
                 </td>
                 <td className="px-4 py-3 text-xs text-muted min-w-[340px]">
                   <div className="space-y-1">
-                    {row.members.map((m, idx) => <p key={`${row.id}-m-${idx}`}>{memberSummary(m)}</p>)}
+                    {row.members.map((m, idx) => <p key={`${row.id}-m-${idx}`}>{memberSummary(m, row.evening_invite)}</p>)}
                   </div>
                 </td>
                 <td className="px-4 py-3 text-muted min-w-[220px]">
@@ -223,7 +232,7 @@ export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: st
             ))}
             {visibleRows.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-4 py-10 text-center text-muted">No households match this search and filter.</td>
+                <td colSpan={11} className="px-4 py-10 text-center text-muted">No households match this search and filter.</td>
               </tr>
             )}
           </tbody>

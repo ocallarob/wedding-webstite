@@ -3,7 +3,7 @@ import { buildInviteEmailHtml } from '../../src/lib/inviteEmailHtml';
 export const dynamic = 'force-dynamic';
 
 type Props = {
-  searchParams: Promise<{ name?: string; rsvp?: string }>;
+  searchParams: Promise<{ name?: string; rsvp?: string; evening_invite?: string }>;
 };
 
 export default async function InviteEmailPreviewPage({ searchParams }: Props) {
@@ -11,12 +11,13 @@ export default async function InviteEmailPreviewPage({ searchParams }: Props) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000';
   const displayName = params.name?.trim() || 'Alannah & Rob';
   const rsvpUrl = params.rsvp?.trim() || `${baseUrl}/rsvp?token=preview-token`;
-  const html = buildInviteEmailHtml(displayName, rsvpUrl, baseUrl);
+  const eveningInvite = params.evening_invite === 'true' || params.evening_invite === '1' || params.evening_invite === 'yes';
+  const html = buildInviteEmailHtml(displayName, rsvpUrl, baseUrl, eveningInvite);
 
   return (
     <div className="min-h-screen bg-stone/30 px-4 py-8">
       <div className="mx-auto mb-4 max-w-4xl rounded-xl border border-stone bg-white/90 p-4 text-xs text-muted">
-        Preview URL params: <code>?name=Your%20Guest&amp;rsvp=https://example.com/rsvp?token=abc</code>
+        Preview URL params: <code>?name=Your%20Guest&amp;evening_invite=true&amp;rsvp=https://example.com/rsvp?token=abc</code>
       </div>
       <iframe title="Invite email preview" srcDoc={html} className="mx-auto block h-[860px] w-full max-w-[680px] rounded-md border border-stone bg-white" />
     </div>

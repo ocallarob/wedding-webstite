@@ -11,7 +11,7 @@ type InputRow = {
 };
 
 type Match =
-  | { status: 'matched'; id: string; current_address_line_one: string | null }
+  | { status: 'matched'; id: string; current_address_line_one: string | null; current_is_paper_invite: boolean }
   | { status: 'not_found' }
   | { status: 'ambiguous'; count: number };
 
@@ -90,10 +90,24 @@ function rowLabel(row: InputRow): string {
   return row.contact_email || row.label || row.members.join(' & ') || '(unlabelled row)';
 }
 
+async function assertAddressLineOneColumnExists(): Promise<void> {
+  const rows = await sql`
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'households'
+      AND column_name = 'address_line_one'
+    LIMIT 1
+  `;
+
+  if (!rows[0]) {
+    throw new Error('households.address_line_one does not exist. Run pnpm db:migrate before updating addresses.');
+  }
+}
+
 async function findHousehold(row: InputRow): Promise<Match> {
   if (row.contact_email) {
     const rows = await sql`
-      SELECT id, address_line_one
+      SELECT id, address_line_one, is_paper_invite
       FROM households
       WHERE contact_email = ${row.contact_email}
       LIMIT 1
@@ -104,12 +118,13 @@ async function findHousehold(row: InputRow): Promise<Match> {
       status: 'matched',
       id: String(rows[0].id),
       current_address_line_one: typeof rows[0].address_line_one === 'string' ? rows[0].address_line_one : null,
+      current_is_paper_invite: Boolean(rows[0].is_paper_invite),
     };
   }
 
   const memberKey = row.members.join('|');
   const rowsByIdentity = await sql`
-    SELECT h.id, h.address_line_one
+    SELECT h.id, h.address_line_one, h.is_paper_invite
     FROM households h
     WHERE h.is_paper_invite = ${row.is_paper_invite}
       AND lower(COALESCE(h.label, '')) = lower(${row.label})
@@ -122,7 +137,7 @@ async function findHousehold(row: InputRow): Promise<Match> {
   `;
 
   const rows = rowsByIdentity.length > 0 ? rowsByIdentity : await sql`
-    SELECT id, address_line_one
+    SELECT id, address_line_one, is_paper_invite
     FROM households
     WHERE is_paper_invite = ${row.is_paper_invite}
       AND lower(address_line_one) = lower(${row.address_line_one})
@@ -135,6 +150,7 @@ async function findHousehold(row: InputRow): Promise<Match> {
     status: 'matched',
     id: String(rows[0].id),
     current_address_line_one: typeof rows[0].address_line_one === 'string' ? rows[0].address_line_one : null,
+    current_is_paper_invite: Boolean(rows[0].is_paper_invite),
   };
 }
 
@@ -151,6 +167,8 @@ async function main() {
   const csvPath = resolve(process.cwd(), fileArg);
   const rows = parseRows(readFileSync(csvPath, 'utf8'));
   const rowsWithAddress = rows.filter((row) => row.address_line_one);
+
+  await assertAddressLineOneColumnExists();
 
   let updated = 0;
   let unchanged = 0;
@@ -176,21 +194,24 @@ async function main() {
       continue;
     }
 
-    if (match.current_address_line_one === row.address_line_one) {
+    if (match.current_address_line_one === row.address_line_one && match.current_is_paper_invite) {
       unchanged += 1;
-      console.log(`- unchanged: ${rowLabel(row)} | ${row.address_line_one}`);
+      console.log(`- unchanged: ${rowLabel(row)} | ${row.address_line_one} | paper invite already true`);
       continue;
     }
 
     updated += 1;
     console.log(
-      `- ${apply ? 'update' : 'would update'}: ${rowLabel(row)} | ${match.current_address_line_one ?? '(blank)'} -> ${row.address_line_one}`,
+      `- ${apply ? 'update' : 'would update'}: ${rowLabel(row)} | ` +
+        `${match.current_address_line_one ?? '(blank)'} -> ${row.address_line_one} | ` +
+        `paper ${match.current_is_paper_invite ? 'true' : 'false'} -> true`,
     );
 
     if (apply) {
       await sql`
         UPDATE households
-        SET address_line_one = ${row.address_line_one}
+        SET address_line_one = ${row.address_line_one},
+          is_paper_invite = true
         WHERE id = ${match.id}
       `;
     }
@@ -202,7 +223,7 @@ async function main() {
   );
 
   if (!apply) {
-    console.log('Dry run only. Re-run with --apply to write address_line_one values.');
+    console.log('Dry run only. Re-run with --apply to write address_line_one values and set paper invite true.');
   }
 }
 

@@ -10,12 +10,13 @@ const DAY_INFO: Record<Day, { date: string; label: string; detail: string }> = {
 type Props = {
   day: Day;
   guestName?: string;
+  eventInfo?: { date: string; label: string; detail: string };
   value: boolean | null;
   onChange: (val: boolean) => void;
 };
 
-export function AttendanceCard({ day, guestName, value, onChange }: Props) {
-  const info = DAY_INFO[day];
+export function AttendanceCard({ day, guestName, eventInfo, value, onChange }: Props) {
+  const info = eventInfo ?? DAY_INFO[day];
 
   return (
     <div className="space-y-3">

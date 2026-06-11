@@ -94,7 +94,7 @@ pnpm db:update-household-addresses
 Behavior:
 - Reads the same CSV structure
 - Skips rows without `address_line_one`
-- Overwrites `households.address_line_one` for matched rows
+- Overwrites `households.address_line_one` for matched rows and sets `is_paper_invite` to `true`
 - Matches email rows by `contact_email`; matches paper rows without email by label/member list or current address
 
 ## Core Routes
