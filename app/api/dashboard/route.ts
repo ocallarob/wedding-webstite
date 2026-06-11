@@ -12,8 +12,12 @@ const REMINDER_BATCH_LIMIT = 100;
 const SENDS_PER_SECOND = 5;
 const SEND_INTERVAL_MS = Math.ceil(1000 / SENDS_PER_SECOND);
 
-function buildReminderEmailHtml(displayName: string, rsvpUrl: string, baseUrl: string): string {
+function buildReminderEmailHtml(displayName: string, rsvpUrl: string, baseUrl: string, eveningInvite = false): string {
   const assetBase = baseUrl.replace(/\/$/, '');
+  const eventLine = eveningInvite ? 'for our evening reception' : 'for our wedding weekend';
+  const detailLine = eveningInvite
+    ? 'Dear ' + displayName + ', if you have a moment, we&rsquo;d be so grateful for your evening reception RSVP.'
+    : 'Dear ' + displayName + ', if you have a moment, we&rsquo;d be so grateful for your RSVP.';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -47,7 +51,7 @@ function buildReminderEmailHtml(displayName: string, rsvpUrl: string, baseUrl: s
         Alannah & Rob
       </h1>
       <p style="margin:5px 0 0;font-family:'Charmonman','Brush Script MT','Segoe Script',cursive;font-size:24px;line-height:1.02;color:#dbb8b8;font-weight:400">
-        for our wedding weekend
+        ${eventLine}
       </p>
       <p style="margin:1px 0 0;font-family:'Charmonman','Brush Script MT','Segoe Script',cursive;font-size:23px;line-height:1.01;color:#dbb8b8;font-weight:400">
         we&rsquo;d love to hear from you
@@ -60,7 +64,7 @@ function buildReminderEmailHtml(displayName: string, rsvpUrl: string, baseUrl: s
         Co. Fermanagh
       </p>
       <p style="margin:15px 0 0;font-family:'Jost',Arial,sans-serif;font-size:15px;line-height:1.68;color:#3a3530">
-        Dear ${displayName}, if you have a moment, we&rsquo;d be so grateful for your RSVP.
+        ${detailLine}
       </p>
 
       <div style="text-align:center;margin-top:16px">
@@ -91,7 +95,7 @@ export async function GET(request: NextRequest) {
 
   const households = await sql`
     SELECT
-      h.id, h.label, h.contact_email, h.address_line_one, h.is_paper_invite, h.invited_at,
+      h.id, h.label, h.contact_email, h.address_line_one, h.evening_invite, h.is_paper_invite, h.invited_at,
       h.invite_failed_count, h.reminder_count, h.reminder_failed_count,
       hr.song, hr.message, hr.submitted_at,
       COALESCE(ho.open_count, 0) AS open_count,
@@ -163,7 +167,7 @@ export async function POST(request: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://alannah-rob.ie';
 
     const rows = await sql`
-      SELECT h.id, h.invite_token, h.contact_email,
+      SELECT h.id, h.invite_token, h.contact_email, h.evening_invite,
         COALESCE((SELECT string_agg(m.full_name, ' & ' ORDER BY m.sort_order, m.created_at) FROM household_members m WHERE m.household_id = h.id), h.contact_email) as display_name
       FROM households h
       LEFT JOIN household_rsvps hr ON hr.household_id = h.id
@@ -186,7 +190,12 @@ export async function POST(request: NextRequest) {
             from: 'Alannah & Rob <hello@alannah-rob.ie>',
             to: h.contact_email as string,
             subject: 'Kind reminder: RSVP for Alannah & Rob wedding',
-            html: buildReminderEmailHtml(h.display_name as string, `${baseUrl}/rsvp?token=${h.invite_token}`, baseUrl),
+            html: buildReminderEmailHtml(
+              h.display_name as string,
+              `${baseUrl}/rsvp?token=${h.invite_token}`,
+              baseUrl,
+              h.evening_invite === true,
+            ),
           });
           if (sendResult.error || !sendResult.data?.id) {
             throw new Error(sendResult.error?.message ?? 'Resend did not return a message id');
@@ -212,7 +221,7 @@ export async function POST(request: NextRequest) {
     const resend = new Resend(process.env.RESEND_API_KEY);
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://alannah-rob.ie';
     const rows = await sql`
-      SELECT h.id, h.invite_token, h.contact_email,
+      SELECT h.id, h.invite_token, h.contact_email, h.evening_invite,
         COALESCE((
           SELECT string_agg(m.full_name, ' & ' ORDER BY m.sort_order, m.created_at)
           FROM household_members m
@@ -233,7 +242,12 @@ export async function POST(request: NextRequest) {
         from: 'Alannah & Rob <hello@alannah-rob.ie>',
         to: household.contact_email as string,
         subject: "You're invited — Alannah & Rob, 28 August 2026",
-        html: buildInviteEmailHtml(household.display_name as string, rsvpUrl, baseUrl),
+        html: buildInviteEmailHtml(
+          household.display_name as string,
+          rsvpUrl,
+          baseUrl,
+          household.evening_invite === true,
+        ),
       });
       if (sendResult.error || !sendResult.data?.id) {
         throw new Error(sendResult.error?.message ?? 'Resend did not return a message id');

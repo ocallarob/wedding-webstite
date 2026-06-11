@@ -31,7 +31,7 @@ export default async function RsvpPage({ searchParams }: Props) {
   const { token } = await searchParams;
   if (!token) return <InvalidLink />;
 
-  const households = await sql`SELECT id, label, contact_email FROM households WHERE invite_token = ${token}`;
+  const households = await sql`SELECT id, label, contact_email, evening_invite FROM households WHERE invite_token = ${token}`;
   if (!households[0]) return <InvalidLink />;
 
   const members = (await sql`
@@ -81,6 +81,7 @@ export default async function RsvpPage({ searchParams }: Props) {
 
       <RsvpForm
         token={token}
+        eveningInvite={households[0].evening_invite === true}
         householdLabel={(households[0].label as string | null) ?? null}
         initialMembers={initialMembers}
         alreadyRsvpd={rsvp.length > 0}

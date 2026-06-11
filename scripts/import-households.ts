@@ -6,6 +6,7 @@ type InputRow = {
   contact_email: string;
   address_line_one: string;
   label: string;
+  evening_invite: boolean;
   members: string[];
   member_types: string[];
   is_paper_invite: boolean;
@@ -63,6 +64,7 @@ function parseRows(csv: string): InputRow[] {
     contact_email: header.indexOf('contact_email'),
     address_line_one: header.indexOf('address_line_one'),
     label: header.indexOf('label'),
+    evening_invite: header.indexOf('evening_invite'),
     members: header.indexOf('members'),
     member_types: header.indexOf('member_types'),
     is_paper_invite: header.indexOf('is_paper_invite'),
@@ -75,12 +77,16 @@ function parseRows(csv: string): InputRow[] {
     const contactEmail = idx.contact_email >= 0 ? (cols[idx.contact_email] ?? '').trim().toLowerCase() : '';
     const addressLineOne = idx.address_line_one >= 0 ? (cols[idx.address_line_one] ?? '').trim() : '';
     const label = (cols[idx.label] ?? '').trim();
+    const eveningInviteRaw = idx.evening_invite >= 0 ? (cols[idx.evening_invite] ?? '').trim().toLowerCase() : '';
     const membersRaw = (cols[idx.members] ?? '').trim();
     const memberTypesRaw = idx.member_types >= 0 ? (cols[idx.member_types] ?? '').trim() : '';
     const isPaperInviteRaw = idx.is_paper_invite >= 0 ? (cols[idx.is_paper_invite] ?? '').trim().toLowerCase() : '';
 
     const isPaperInvite = isPaperInviteRaw === 'true' || isPaperInviteRaw === '1' || isPaperInviteRaw === 'yes';
     if (!isPaperInvite && !contactEmail) throw new Error(`Row ${i + 1}: contact_email is required for email invites`);
+    if (eveningInviteRaw && !['true', '1', 'yes', 'false', '0', 'no'].includes(eveningInviteRaw)) {
+      throw new Error(`Row ${i + 1}: evening_invite must be true/false`);
+    }
     if (isPaperInvite && !contactEmail && !addressLineOne) {
       throw new Error(`Row ${i + 1}: address_line_one is required when contact_email is blank`);
     }
@@ -97,6 +103,7 @@ function parseRows(csv: string): InputRow[] {
       contact_email: contactEmail,
       address_line_one: addressLineOne,
       label,
+      evening_invite: eveningInviteRaw === 'true' || eveningInviteRaw === '1' || eveningInviteRaw === 'yes',
       members,
       member_types: memberTypes,
       is_paper_invite: isPaperInvite,
@@ -118,13 +125,14 @@ async function upsertHousehold(row: InputRow): Promise<void> {
         SET contact_email = ${row.contact_email || null},
           address_line_one = ${row.address_line_one || null},
           label = ${row.label || null},
+          evening_invite = ${row.evening_invite},
           is_paper_invite = ${row.is_paper_invite}
         WHERE id = ${existing[0].id}
         RETURNING id
       `
     : await sql`
-        INSERT INTO households (contact_email, address_line_one, label, is_paper_invite)
-        VALUES (${row.contact_email || null}, ${row.address_line_one || null}, ${row.label || null}, ${row.is_paper_invite})
+        INSERT INTO households (contact_email, address_line_one, label, evening_invite, is_paper_invite)
+        VALUES (${row.contact_email || null}, ${row.address_line_one || null}, ${row.label || null}, ${row.evening_invite}, ${row.is_paper_invite})
         RETURNING id
       `;
 
@@ -147,8 +155,8 @@ async function insertOnlyHousehold(row: InputRow): Promise<'inserted' | 'skipped
   if (existing.length > 0) return 'skipped';
 
   const inserted = await sql`
-    INSERT INTO households (contact_email, address_line_one, label, is_paper_invite)
-    VALUES (${row.contact_email || null}, ${row.address_line_one || null}, ${row.label || null}, ${row.is_paper_invite})
+    INSERT INTO households (contact_email, address_line_one, label, evening_invite, is_paper_invite)
+    VALUES (${row.contact_email || null}, ${row.address_line_one || null}, ${row.label || null}, ${row.evening_invite}, ${row.is_paper_invite})
     RETURNING id
   `;
 
@@ -201,7 +209,7 @@ async function main() {
 
   console.log(`Parsed ${rows.length} households from ${csvPath}`);
   for (const r of rows) {
-    console.log(`- ${r.contact_email || r.address_line_one} | ${r.label || '(no label)'} | members: ${r.members.join(', ')}`);
+    console.log(`- ${r.contact_email || r.address_line_one} | ${r.label || '(no label)'} | evening: ${r.evening_invite ? 'yes' : 'no'} | members: ${r.members.join(', ')}`);
   }
 
   if (!apply) {

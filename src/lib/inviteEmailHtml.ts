@@ -1,5 +1,40 @@
-export function buildInviteEmailHtml(displayName: string, rsvpUrl: string, baseUrl: string): string {
+type InviteEmailCopy = {
+  title: string;
+  scriptLineOne: string;
+  scriptLineTwo: string;
+  dateLine: string;
+  locationLine: string;
+  greeting: string;
+  detailsLinkText: string;
+};
+
+function inviteCopyFor(eveningInvite: boolean): InviteEmailCopy {
+  if (eveningInvite) {
+    return {
+      title: 'Alannah & Rob',
+      scriptLineOne: 'invite you to celebrate',
+      scriptLineTwo: 'at our evening reception',
+      dateLine: 'Friday, 28 August 2026',
+      locationLine: 'Lough Erne Resort, Co. Fermanagh',
+      greeting: 'we&rsquo;d be so delighted if you could join us for the evening celebration.',
+      detailsLinkText: 'See alannah-rob.ie for evening details.',
+    };
+  }
+
+  return {
+    title: 'Alannah & Rob',
+    scriptLineOne: 'invite you to celebrate',
+    scriptLineTwo: 'our wedding weekend',
+    dateLine: 'Friday, 28 August 2026',
+    locationLine: 'Co. Fermanagh',
+    greeting: 'we&rsquo;d be so delighted to celebrate together.',
+    detailsLinkText: 'See alannah-rob.ie for wedding details.',
+  };
+}
+
+export function buildInviteEmailHtml(displayName: string, rsvpUrl: string, baseUrl: string, eveningInvite = false): string {
   const assetBase = baseUrl.replace(/\/$/, '');
+  const copy = inviteCopyFor(eveningInvite);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -32,23 +67,23 @@ export function buildInviteEmailHtml(displayName: string, rsvpUrl: string, baseU
         le grá agus le háthas
       </p>
       <h1 style="margin:9px 0 0;font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:60px;line-height:0.94;font-weight:400;letter-spacing:0.01em;color:#9c7a8c">
-        Alannah & Rob
+        ${copy.title}
       </h1>
       <p style="margin:5px 0 0;font-family:'Charmonman','Brush Script MT','Segoe Script',cursive;font-size:22px;line-height:1.02;color:#dfc1c6;font-weight:400">
-        invite you to celebrate
+        ${copy.scriptLineOne}
       </p>
       <p style="margin:1px 0 0;font-family:'Charmonman','Brush Script MT','Segoe Script',cursive;font-size:21px;line-height:1.01;color:#dfc1c6;font-weight:400">
-        our wedding weekend
+        ${copy.scriptLineTwo}
       </p>
       <div style="margin:8px auto 5px;max-width:430px;height:1px;background:#d9d2c9;opacity:0.75"></div>
       <p style="margin:14px 0 0;font-family:'Jost',Arial,sans-serif;font-size:11px;line-height:1.2;letter-spacing:0.28em;text-transform:uppercase;color:#7a756f">
-        Friday, 28 August 2026
+        ${copy.dateLine}
       </p>
       <p style="margin:6px 0 0;font-family:'Jost',Arial,sans-serif;font-size:13px;line-height:1.4;color:#7a756f;letter-spacing:0.12em;text-transform:uppercase">
-        Co. Fermanagh
+        ${copy.locationLine}
       </p>
       <p style="margin:15px 0 0;font-family:'Jost',Arial,sans-serif;font-size:15px;line-height:1.68;color:#3a3530">
-        Dear ${displayName}, we&rsquo;d be so delighted to celebrate together.
+        Dear ${displayName}, ${copy.greeting}
       </p>
 
       <div style="text-align:center;margin-top:16px">
@@ -59,7 +94,7 @@ export function buildInviteEmailHtml(displayName: string, rsvpUrl: string, baseU
         <a href="${rsvpUrl}" style="color:#9c7a8c">Open your RSVP link</a>
       </p>
       <p style="margin:10px 0 0;font-family:'Jost',Arial,sans-serif;font-size:12px;line-height:1.5;color:#7a756f;text-align:center">
-        See <a href="https://alannah-rob.ie" style="color:#9c7a8c">alannah-rob.ie</a> for wedding details.
+        ${copy.detailsLinkText.replace('alannah-rob.ie', '<a href="https://alannah-rob.ie" style="color:#9c7a8c">alannah-rob.ie</a>')}
       </p>
 
       <div style="text-align:right;margin-top:15px">

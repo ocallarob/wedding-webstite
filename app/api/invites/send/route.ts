@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
   const resend = new Resend(process.env.RESEND_API_KEY);
   const allUninvited = await sql`
-    SELECT h.id, h.invite_token, h.contact_email,
+    SELECT h.id, h.invite_token, h.contact_email, h.evening_invite,
       COALESCE((
         SELECT string_agg(m.full_name, ' & ' ORDER BY m.sort_order, m.created_at)
         FROM household_members m
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
           from: 'Alannah & Rob <hello@alannah-rob.ie>',
           to: household.contact_email as string,
           subject: "You're invited — Alannah & Rob, 28 August 2026",
-          html: buildInviteEmailHtml(household.display_name as string, rsvpUrl, baseUrl),
+          html: buildInviteEmailHtml(household.display_name as string, rsvpUrl, baseUrl, household.evening_invite === true),
         });
         if (sendResult.error || !sendResult.data?.id) {
           throw new Error(sendResult.error?.message ?? 'Resend did not return a message id');
