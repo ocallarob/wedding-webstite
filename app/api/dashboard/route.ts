@@ -4,7 +4,7 @@ import { sql } from '../../../src/lib/db';
 import { ADMIN_COOKIE_NAME, hasAdminAuth, isSameOriginRequest } from '../../../src/lib/adminAuth';
 import { createAdminSessionToken, SESSION_TTL_SECONDS } from '../../../src/lib/adminSession';
 import { verifyCsrfToken } from '../../../src/lib/csrf';
-import { buildInviteEmailHtml } from '../../../src/lib/inviteEmailHtml';
+import { buildInviteEmailHtml, buildInviteEmailSubject } from '../../../src/lib/inviteEmailHtml';
 import { runThrottledBatch } from '../../../src/lib/throttledBatch';
 
 export const dynamic = 'force-dynamic';
@@ -14,9 +14,9 @@ const SEND_INTERVAL_MS = Math.ceil(1000 / SENDS_PER_SECOND);
 
 function buildReminderEmailHtml(displayName: string, rsvpUrl: string, baseUrl: string, eveningInvite = false): string {
   const assetBase = baseUrl.replace(/\/$/, '');
-  const eventLine = eveningInvite ? 'for our evening reception' : 'for our wedding weekend';
+  const eventLine = eveningInvite ? 'for our evening / afters invitation' : 'for our wedding weekend';
   const detailLine = eveningInvite
-    ? 'Dear ' + displayName + ', if you have a moment, we&rsquo;d be so grateful for your evening reception RSVP.'
+    ? 'Dear ' + displayName + ', if you have a moment, we&rsquo;d be so grateful for your evening / afters RSVP.'
     : 'Dear ' + displayName + ', if you have a moment, we&rsquo;d be so grateful for your RSVP.';
 
   return `<!DOCTYPE html>
@@ -189,7 +189,9 @@ export async function POST(request: NextRequest) {
           const sendResult = await resend.emails.send({
             from: 'Alannah & Rob <hello@alannah-rob.ie>',
             to: h.contact_email as string,
-            subject: 'Kind reminder: RSVP for Alannah & Rob wedding',
+            subject: h.evening_invite === true
+              ? 'Kind reminder: evening RSVP for Alannah & Rob'
+              : 'Kind reminder: RSVP for Alannah & Rob wedding',
             html: buildReminderEmailHtml(
               h.display_name as string,
               `${baseUrl}/rsvp?token=${h.invite_token}`,
@@ -241,7 +243,7 @@ export async function POST(request: NextRequest) {
       const sendResult = await resend.emails.send({
         from: 'Alannah & Rob <hello@alannah-rob.ie>',
         to: household.contact_email as string,
-        subject: "You're invited — Alannah & Rob, 28 August 2026",
+        subject: buildInviteEmailSubject(household.evening_invite === true),
         html: buildInviteEmailHtml(
           household.display_name as string,
           rsvpUrl,

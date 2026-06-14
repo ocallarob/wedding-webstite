@@ -97,10 +97,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
   }
 
-  const households = await sql`SELECT id, evening_invite FROM households WHERE invite_token = ${token}`;
+  const households = await sql`SELECT id FROM households WHERE invite_token = ${token}`;
   if (!households[0]) return NextResponse.json({ error: 'Invalid invite link' }, { status: 404 });
   const householdId = households[0].id as string;
-  const isEveningGuest = households[0].evening_invite === true;
 
   const allowedMembers = await sql`
     SELECT id FROM household_members WHERE household_id = ${householdId}
@@ -120,12 +119,11 @@ export async function POST(request: Request) {
     }
     seen.add(member.id);
     const dietary = normaliseDietary(member.dietary);
-    const attendingDay2 = isEveningGuest ? false : member.attending_day2;
     await sql`
       UPDATE household_members
       SET
         attending_day1 = ${member.attending_day1},
-        attending_day2 = ${attendingDay2},
+        attending_day2 = ${member.attending_day2},
         dietary = ${JSON.stringify(dietary)}::jsonb
       WHERE id = ${member.id} AND household_id = ${householdId}
     `;

@@ -2,9 +2,11 @@ type InviteEmailCopy = {
   title: string;
   scriptLineOne: string;
   scriptLineTwo: string;
+  inviteTypeLine: string | null;
   dateLine: string;
   locationLine: string;
   greeting: string;
+  note: string | null;
   detailsLinkText: string;
 };
 
@@ -12,11 +14,13 @@ function inviteCopyFor(eveningInvite: boolean): InviteEmailCopy {
   if (eveningInvite) {
     return {
       title: 'Alannah & Rob',
-      scriptLineOne: 'invite you to celebrate',
-      scriptLineTwo: 'at our evening reception',
+      scriptLineOne: 'invite you to join us',
+      scriptLineTwo: 'for the evening celebrations',
+      inviteTypeLine: 'Evening / afters invitation',
       dateLine: 'Friday, 28 August 2026',
       locationLine: 'Lough Erne Resort, Co. Fermanagh',
-      greeting: 'we&rsquo;d be so delighted if you could join us for the evening celebration.',
+      greeting: 'we&rsquo;d be so delighted if you could join us for the afters and evening celebration.',
+      note: 'This invitation is for the evening reception from 9pm, and Day Two on Saturday if you can join us.',
       detailsLinkText: 'See alannah-rob.ie for evening details.',
     };
   }
@@ -25,11 +29,19 @@ function inviteCopyFor(eveningInvite: boolean): InviteEmailCopy {
     title: 'Alannah & Rob',
     scriptLineOne: 'invite you to celebrate',
     scriptLineTwo: 'our wedding weekend',
+    inviteTypeLine: null,
     dateLine: 'Friday, 28 August 2026',
     locationLine: 'Co. Fermanagh',
     greeting: 'we&rsquo;d be so delighted to celebrate together.',
+    note: null,
     detailsLinkText: 'See alannah-rob.ie for wedding details.',
   };
+}
+
+export function buildInviteEmailSubject(eveningInvite = false): string {
+  return eveningInvite
+    ? "Evening invitation — Alannah & Rob, 28 August 2026"
+    : "You're invited — Alannah & Rob, 28 August 2026";
 }
 
 export function buildInviteEmailHtml(displayName: string, rsvpUrl: string, baseUrl: string, eveningInvite = false): string {
@@ -75,6 +87,7 @@ export function buildInviteEmailHtml(displayName: string, rsvpUrl: string, baseU
       <p style="margin:1px 0 0;font-family:'Charmonman','Brush Script MT','Segoe Script',cursive;font-size:21px;line-height:1.01;color:#dfc1c6;font-weight:400">
         ${copy.scriptLineTwo}
       </p>
+      ${copy.inviteTypeLine ? `<p style="display:inline-block;margin:13px 0 0;padding:7px 13px;border:1px solid #d9d2c9;border-radius:999px;font-family:'Jost',Arial,sans-serif;font-size:10px;line-height:1.2;letter-spacing:0.2em;text-transform:uppercase;color:#7a756f;background:rgba(255,253,249,0.72)">${copy.inviteTypeLine}</p>` : ''}
       <div style="margin:8px auto 5px;max-width:430px;height:1px;background:#d9d2c9;opacity:0.75"></div>
       <p style="margin:14px 0 0;font-family:'Jost',Arial,sans-serif;font-size:11px;line-height:1.2;letter-spacing:0.28em;text-transform:uppercase;color:#7a756f">
         ${copy.dateLine}
@@ -85,6 +98,7 @@ export function buildInviteEmailHtml(displayName: string, rsvpUrl: string, baseU
       <p style="margin:15px 0 0;font-family:'Jost',Arial,sans-serif;font-size:15px;line-height:1.68;color:#3a3530">
         Dear ${displayName}, ${copy.greeting}
       </p>
+      ${copy.note ? `<p style="margin:12px auto 0;max-width:440px;font-family:'Jost',Arial,sans-serif;font-size:13px;line-height:1.58;color:#7a756f;text-align:center">${copy.note}</p>` : ''}
 
       <div style="text-align:center;margin-top:16px">
         <a href="${rsvpUrl}" style="display:inline-block;background:#dbb8b8;border:1px solid #dbb8b8;color:#3a3530;text-decoration:none;padding:12px 30px;border-radius:999px;font-family:'Jost',Arial,sans-serif;font-size:11px;font-weight:500;letter-spacing:0.22em;text-transform:uppercase">RSVP Now</a>

@@ -95,7 +95,7 @@ function memberSummary(member: Member, eveningInvite: boolean): string {
   const d = normaliseDietary(member.dietary);
   const dietary = [...d.options.map((o) => o.toUpperCase()), d.other.trim()].filter(Boolean).join(', ') || '—';
   if (eveningInvite) {
-    return `${member.full_name} (${member.member_type}) · Evening: ${yesNoDash(member.attending_day1)} · Dietary: ${dietary}`;
+    return `${member.full_name} (${member.member_type}) · Evening: ${yesNoDash(member.attending_day1)} · Day 2: ${yesNoDash(member.attending_day2)} · Dietary: ${dietary}`;
   }
   return `${member.full_name} (${member.member_type}) · D1: ${yesNoDash(member.attending_day1)} · D2: ${yesNoDash(member.attending_day2)} · Dietary: ${dietary}`;
 }

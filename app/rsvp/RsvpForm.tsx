@@ -26,7 +26,7 @@ type Props = {
 const EVENING_EVENT = {
   date: 'Friday, 28 August',
   label: 'Evening Reception',
-  detail: 'Lough Erne Resort\nArrival from 7:30pm',
+  detail: 'Lough Erne Resort\nArrival from 9pm',
 };
 
 function StepIndicator({ current, total }: { current: number; total: number }) {
@@ -56,8 +56,8 @@ export function RsvpForm({ token, eveningInvite, householdLabel, initialMembers,
   const title = householdLabel?.trim() || initialMembers.map((m) => m.full_name).join(' & ');
 
   const attendanceChosen = useMemo(
-    () => members.every((m) => m.attending_day1 !== null && (isEveningGuest || m.attending_day2 !== null)),
-    [isEveningGuest, members]
+    () => members.every((m) => m.attending_day1 !== null && m.attending_day2 !== null),
+    [members]
   );
 
   const anyAttending = useMemo(
@@ -97,14 +97,10 @@ export function RsvpForm({ token, eveningInvite, householdLabel, initialMembers,
     setError('');
 
     try {
-      const submittedMembers = isEveningGuest
-        ? members.map((member) => ({ ...member, attending_day2: false }))
-        : members;
-
       const res = await fetch('/api/rsvp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, song: song || undefined, message: message || undefined, members: submittedMembers }),
+        body: JSON.stringify({ token, song: song || undefined, message: message || undefined, members }),
       });
 
       const data = await res.json().catch(() => ({}));
@@ -155,7 +151,7 @@ export function RsvpForm({ token, eveningInvite, householdLabel, initialMembers,
             <div className="space-y-1">
               <p className="label-serif text-sm">Will you be joining us?</p>
               <p className="text-xs text-muted">
-                {isEveningGuest ? 'Select attendance for each person for the evening reception.' : 'Select attendance for each person, for each event.'}
+                {isEveningGuest ? 'Select attendance for each person for the evening reception and Day Two.' : 'Select attendance for each person, for each event.'}
               </p>
             </div>
 
@@ -172,13 +168,11 @@ export function RsvpForm({ token, eveningInvite, householdLabel, initialMembers,
                       value={member.attending_day1}
                       onChange={(v) => updateMember(member.id, { attending_day1: v })}
                     />
-                    {!isEveningGuest && (
-                      <AttendanceCard
-                        day={2}
-                        value={member.attending_day2}
-                        onChange={(v) => updateMember(member.id, { attending_day2: v })}
-                      />
-                    )}
+                    <AttendanceCard
+                      day={2}
+                      value={member.attending_day2}
+                      onChange={(v) => updateMember(member.id, { attending_day2: v })}
+                    />
                   </div>
                 </div>
               ))}

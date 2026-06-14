@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { sql } from '../../../../src/lib/db';
 import { hasAdminAuth, isSameOriginRequest } from '../../../../src/lib/adminAuth';
-import { buildInviteEmailHtml } from '../../../../src/lib/inviteEmailHtml';
+import { buildInviteEmailHtml, buildInviteEmailSubject } from '../../../../src/lib/inviteEmailHtml';
 import { runThrottledBatch } from '../../../../src/lib/throttledBatch';
 
 export const dynamic = 'force-dynamic';
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
         const sendResult = await resend.emails.send({
           from: 'Alannah & Rob <hello@alannah-rob.ie>',
           to: household.contact_email as string,
-          subject: "You're invited — Alannah & Rob, 28 August 2026",
+          subject: buildInviteEmailSubject(household.evening_invite === true),
           html: buildInviteEmailHtml(household.display_name as string, rsvpUrl, baseUrl, household.evening_invite === true),
         });
         if (sendResult.error || !sendResult.data?.id) {
