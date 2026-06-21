@@ -14,6 +14,7 @@ async function migrate() {
       contact_email          TEXT UNIQUE,
       address_line_one       TEXT,
       label                  TEXT,
+      evening_invite         BOOLEAN NOT NULL DEFAULT false,
       is_paper_invite        BOOLEAN NOT NULL DEFAULT false,
       invited_at             TIMESTAMPTZ,
       invite_failed_count    INTEGER NOT NULL DEFAULT 0,
@@ -28,6 +29,7 @@ async function migrate() {
 
   await sql`ALTER TABLE households ADD COLUMN IF NOT EXISTS last_invite_error TEXT`;
   await sql`ALTER TABLE households ADD COLUMN IF NOT EXISTS address_line_one TEXT`;
+  await sql`ALTER TABLE households ADD COLUMN IF NOT EXISTS evening_invite BOOLEAN NOT NULL DEFAULT false`;
   await sql`ALTER TABLE households ALTER COLUMN contact_email DROP NOT NULL`;
   await sql`
     CREATE UNIQUE INDEX IF NOT EXISTS households_paper_address_line_one_idx

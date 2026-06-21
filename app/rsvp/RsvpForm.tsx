@@ -15,11 +15,18 @@ type Member = {
 
 type Props = {
   token: string;
+  eveningInvite: boolean;
   householdLabel: string | null;
   initialMembers: Member[];
   alreadyRsvpd: boolean;
   initialSong: string;
   initialMessage: string;
+};
+
+const EVENING_EVENT = {
+  date: 'Friday, 28 August',
+  label: 'Evening Reception',
+  detail: 'Lough Erne Resort\nArrival from 9pm',
 };
 
 function StepIndicator({ current, total }: { current: number; total: number }) {
@@ -34,7 +41,7 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
   );
 }
 
-export function RsvpForm({ token, householdLabel, initialMembers, alreadyRsvpd, initialSong, initialMessage }: Props) {
+export function RsvpForm({ token, eveningInvite, householdLabel, initialMembers, alreadyRsvpd, initialSong, initialMessage }: Props) {
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [song, setSong] = useState(initialSong);
   const [message, setMessage] = useState(initialMessage);
@@ -45,6 +52,7 @@ export function RsvpForm({ token, householdLabel, initialMembers, alreadyRsvpd, 
   const [error, setError] = useState('');
 
   const totalSteps = 3;
+  const isEveningGuest = eveningInvite;
   const title = householdLabel?.trim() || initialMembers.map((m) => m.full_name).join(' & ');
 
   const attendanceChosen = useMemo(
@@ -142,7 +150,9 @@ export function RsvpForm({ token, householdLabel, initialMembers, alreadyRsvpd, 
           <div className="px-7 pb-7 space-y-6">
             <div className="space-y-1">
               <p className="label-serif text-sm">Will you be joining us?</p>
-              <p className="text-xs text-muted">Select attendance for each person, for each event.</p>
+              <p className="text-xs text-muted">
+                {isEveningGuest ? 'Select attendance for each person for the evening reception and Day Two.' : 'Select attendance for each person, for each event.'}
+              </p>
             </div>
 
             <div className="space-y-6">
@@ -154,6 +164,7 @@ export function RsvpForm({ token, householdLabel, initialMembers, alreadyRsvpd, 
                   <div className="grid gap-3 sm:grid-cols-2">
                     <AttendanceCard
                       day={1}
+                      eventInfo={isEveningGuest ? EVENING_EVENT : undefined}
                       value={member.attending_day1}
                       onChange={(v) => updateMember(member.id, { attending_day1: v })}
                     />

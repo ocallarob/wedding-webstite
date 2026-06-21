@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
   }
 
   const households = await sql`
-    SELECT id, label, contact_email FROM households WHERE invite_token = ${token}
+    SELECT id, label, contact_email, evening_invite FROM households WHERE invite_token = ${token}
   `;
   if (!households[0]) return NextResponse.json({ error: 'Invalid invite link' }, { status: 404 });
   const householdId = String(households[0].id);
@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
     household_id: householdId,
     label: households[0].label,
     contact_email: households[0].contact_email,
+    evening_invite: households[0].evening_invite === true,
     already_rsvpd: rsvp.length > 0,
     song: (rsvp[0]?.song as string | null) ?? '',
     message: (rsvp[0]?.message as string | null) ?? '',
