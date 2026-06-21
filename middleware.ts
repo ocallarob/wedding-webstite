@@ -19,7 +19,8 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/faq') ||
     pathname.startsWith('/gallery') ||
     pathname.startsWith('/save-the-date') ||
-    pathname.startsWith('/invite-email-preview');
+    pathname.startsWith('/invite-email-preview') ||
+    pathname.startsWith('/reminder-email-preview');
 
   if (isRoot || isInternal || isPublicAsset || isAllowedRoute) {
     return NextResponse.next();

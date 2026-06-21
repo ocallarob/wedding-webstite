@@ -122,7 +122,20 @@ Behavior:
 Admin APIs:
 - `POST /api/invites/send` (send new invites)
 - `POST /api/dashboard` with `action=send_reminders` (reminders)
+- `POST /api/reminders/test` (send one test reminder without updating counters)
 - `GET /api/dashboard` (`x-admin-secret` header auth)
+
+Send a test reminder:
+
+```bash
+curl -X POST http://localhost:3000/api/reminders/test \
+  -H "Content-Type: application/json" \
+  -H "x-admin-secret: $ADMIN_SECRET" \
+  -d '{"to":"you@example.com","displayName":"Test Guest"}'
+```
+
+Optional JSON fields are `eveningInvite` (boolean) and `rsvpToken` (string). If no
+token is supplied, the email uses a clearly non-production example RSVP token.
 
 ## Email + Deliverability Notes
 
