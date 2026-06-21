@@ -4,11 +4,17 @@ import { hasAdminAuth, isSameOriginRequest } from '../../../src/lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
 
+function parseBooleanFlag(value: unknown): boolean {
+  if (value === true) return true;
+  if (typeof value !== 'string') return false;
+  return ['true', '1', 'yes'].includes(value.trim().toLowerCase());
+}
+
 export async function GET(request: NextRequest) {
   if (!hasAdminAuth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const rows = await sql`
-    SELECT h.id, h.label, h.contact_email, h.address_line_one, h.is_paper_invite,
+    SELECT h.id, h.label, h.contact_email, h.address_line_one, h.evening_invite, h.is_paper_invite,
       COALESCE(json_agg(json_build_object('id', m.id, 'full_name', m.full_name, 'member_type', m.member_type, 'sort_order', m.sort_order)
       ORDER BY m.sort_order, m.created_at) FILTER (WHERE m.id IS NOT NULL), '[]'::json) AS members
     FROM households h
@@ -28,6 +34,7 @@ export async function POST(request: NextRequest) {
   const contactEmail = String(body.contact_email ?? '').trim().toLowerCase();
   const addressLineOne = String(body.address_line_one ?? '').trim();
   const label = String(body.label ?? '').trim() || null;
+  const eveningInvite = parseBooleanFlag(body.evening_invite);
   const isPaperInvite = Boolean(body.is_paper_invite);
   const members = Array.isArray(body.members) ? body.members : [];
 
@@ -56,13 +63,14 @@ export async function POST(request: NextRequest) {
         SET contact_email = ${contactEmail || null},
           address_line_one = ${addressLineOne || null},
           label = ${label},
+          evening_invite = ${eveningInvite},
           is_paper_invite = ${isPaperInvite}
         WHERE id = ${existing[0].id}
         RETURNING id
       `
     : await sql`
-        INSERT INTO households (contact_email, address_line_one, label, is_paper_invite)
-        VALUES (${contactEmail || null}, ${addressLineOne || null}, ${label}, ${isPaperInvite})
+        INSERT INTO households (contact_email, address_line_one, label, evening_invite, is_paper_invite)
+        VALUES (${contactEmail || null}, ${addressLineOne || null}, ${label}, ${eveningInvite}, ${isPaperInvite})
         RETURNING id
       `;
 
