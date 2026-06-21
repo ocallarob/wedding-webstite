@@ -63,12 +63,13 @@ export function buildReminderEmailHtml(displayName: string, rsvpUrl: string, bas
         <a href="${rsvpUrl}" style="color:#9c7a8c">Open your RSVP link</a>
       </p>
       <p style="margin:14px 0 0;font-size:12px;color:#7a756f;text-align:center">
-        Kindly respond by 1 August 2026
+        Kindly respond by Sunday, 28 June 2026
       </p>
 
       <div style="text-align:right;margin-top:15px">
         <img src="${assetBase}/assets/devenish-tower-rsvp.png" width="108" alt="" style="display:inline-block;border:0;outline:none;text-decoration:none;opacity:0.75">
       </div>
+
     </div>
   </div>
 </body>
