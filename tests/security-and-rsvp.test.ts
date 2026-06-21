@@ -3,6 +3,7 @@ import { createAdminSessionToken, verifyAdminSessionToken } from '../src/lib/adm
 import { createCsrfToken, verifyCsrfToken } from '../src/lib/csrf';
 import { allowRsvpGet, allowRsvpPost } from '../src/lib/rsvpRateLimit';
 import { RSVP_LIMITS, validateRsvpPayload } from '../src/lib/rsvpValidation';
+import { validateReminderTestPayload } from '../src/lib/reminderTestPayload';
 
 describe('security and RSVP helpers', () => {
   it('admin session token verifies with correct secret and fails with wrong secret', () => {
@@ -58,5 +59,26 @@ describe('security and RSVP helpers', () => {
     const allowAll = async () => true;
     expect(await allowRsvpGet('1.2.3.4', 'tok', allowAll as any)).toBe(true);
     expect(await allowRsvpPost('1.2.3.4', 'tok', allowAll as any)).toBe(true);
+  });
+
+  it('reminder test payload accepts exactly one valid recipient', () => {
+    const result = validateReminderTestPayload({
+      to: 'test@example.com',
+      displayName: 'Anne & Brian',
+      eveningInvite: true,
+      rsvpToken: 'test-token',
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      payload: {
+        to: 'test@example.com',
+        displayName: 'Anne & Brian',
+        eveningInvite: true,
+        rsvpToken: 'test-token',
+      },
+    });
+    expect(validateReminderTestPayload({ to: ['one@example.com', 'two@example.com'] }).ok).toBe(false);
+    expect(validateReminderTestPayload({ to: 'not-an-email' }).ok).toBe(false);
   });
 });
