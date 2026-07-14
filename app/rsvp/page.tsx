@@ -75,7 +75,7 @@ export default async function RsvpPage({ searchParams }: Props) {
             height={50}
             className="mx-auto mt-3 h-auto w-44 opacity-65"
           />
-          <p className="mt-4 text-sm text-muted">{site.rsvpDeadline}</p>
+          {households[0].evening_invite !== true && <p className="mt-4 text-sm text-muted">{site.rsvpDeadline}</p>}
         </div>
       </header>
 
