@@ -3,6 +3,8 @@ import { Charmonman, Cormorant_Garamond, Jost } from 'next/font/google';
 import './globals.css';
 import { site } from '../src/content/site';
 import { SiteFrame } from '../src/components/SiteFrame';
+import { hasGalleryAccess } from '../src/lib/galleryAuth';
+export const dynamic = 'force-dynamic';
 
 const heading = Cormorant_Garamond({
   subsets: ['latin'],
@@ -62,11 +64,12 @@ export const metadata: Metadata = {
 
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const showGallery = await hasGalleryAccess();
   return (
     <html lang="en" className={`${heading.variable} ${body.variable} ${script.variable}`}>
       <body className="font-body">
-        <SiteFrame coupleNames={site.coupleNames} dateText={site.dateText} locationText={site.locationText}>
+        <SiteFrame coupleNames={site.coupleNames} dateText={site.dateText} locationText={site.locationText} showGallery={showGallery}>
           {children}
         </SiteFrame>
       </body>

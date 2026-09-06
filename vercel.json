@@ -1,0 +1,21 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "app/api/gallery/queue/route.ts": {
+      "maxDuration": 300,
+      "experimentalTriggers": [
+        {
+          "type": "queue/v2beta",
+          "topic": "gallery-photo-processing",
+          "retryAfterSeconds": 30
+        }
+      ]
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/gallery/recovery",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

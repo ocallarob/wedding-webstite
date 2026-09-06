@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
 import { sql } from '../../../src/lib/db';
 import { ADMIN_COOKIE_NAME, hasAdminAuth, isSameOriginRequest } from '../../../src/lib/adminAuth';
 import { createAdminSessionToken, SESSION_TTL_SECONDS } from '../../../src/lib/adminSession';
 import { verifyCsrfToken } from '../../../src/lib/csrf';
-import { buildInviteEmailHtml, buildInviteEmailSubject } from '../../../src/lib/inviteEmailHtml';
-import { buildReminderEmailHtml } from '../../../src/lib/reminderEmailHtml';
-import { runThrottledBatch } from '../../../src/lib/throttledBatch';
 
 export const dynamic = 'force-dynamic';
-const REMINDER_BATCH_LIMIT = 100;
-const SENDS_PER_SECOND = 5;
-const SEND_INTERVAL_MS = Math.ceil(1000 / SENDS_PER_SECOND);
+
+function dashboardRedirect(request: NextRequest, path: string, error: string): NextResponse {
+  const url = new URL(path, request.url);
+  url.searchParams.set('error', error);
+  return NextResponse.redirect(url);
+}
 
 export async function GET(request: NextRequest) {
   if (!hasAdminAuth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -63,141 +62,30 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
   const action = formData.get('action');
+  const nextPath = formData.get('next') === '/dashboard/gallery' ? '/dashboard/gallery' : '/dashboard';
   const adminSecret = process.env.ADMIN_SECRET;
   const sessionToken = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
   const csrfToken = String(formData.get('csrf_token') ?? '');
   const csrfValid = !!adminSecret && verifyCsrfToken(csrfToken, sessionToken, adminSecret);
 
   if (action === 'logout') {
-    if (!hasAdminAuth(request) || !csrfValid) {
-      return NextResponse.redirect(new URL('/dashboard?error=unauthorized', request.url));
+    if (!hasAdminAuth(request) || !isSameOriginRequest(request) || !csrfValid) {
+      return dashboardRedirect(request, '/dashboard', 'unauthorized');
     }
     const response = NextResponse.redirect(new URL('/dashboard', request.url));
     response.cookies.delete({ name: ADMIN_COOKIE_NAME, path: '/' });
     return response;
   }
 
-  if (!adminSecret) {
-    return NextResponse.redirect(new URL('/dashboard?error=missing_admin_secret', request.url));
+  if (action !== null) {
+    return NextResponse.json({ error: 'Unsupported dashboard action' }, { status: 405 });
   }
 
-  if (action === 'send_reminders') {
-    if (!hasAdminAuth(request)) return NextResponse.redirect(new URL('/dashboard?error=unauthorized', request.url));
-    if (!isSameOriginRequest(request)) return NextResponse.redirect(new URL('/dashboard?error=unauthorized', request.url));
-    if (!csrfValid) return NextResponse.redirect(new URL('/dashboard?error=unauthorized', request.url));
-
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://alannah-rob.ie';
-
-    const rows = await sql`
-      SELECT h.id, h.invite_token, h.contact_email, h.evening_invite,
-        COALESCE((SELECT string_agg(m.full_name, ' & ' ORDER BY m.sort_order, m.created_at) FROM household_members m WHERE m.household_id = h.id), h.contact_email) as display_name
-      FROM households h
-      LEFT JOIN household_rsvps hr ON hr.household_id = h.id
-      WHERE h.invited_at IS NOT NULL
-        AND h.is_paper_invite = false
-        AND h.contact_email IS NOT NULL
-        AND hr.household_id IS NULL
-      ORDER BY COALESCE(h.label, h.contact_email)
-      LIMIT ${REMINDER_BATCH_LIMIT}
-    `;
-
-    if (rows.length === 0) return NextResponse.redirect(new URL('/dashboard?reminder=none', request.url));
-
-    const { sent, failed } = await runThrottledBatch({
-      items: rows,
-      intervalMs: SEND_INTERVAL_MS,
-      runItem: async (h) => {
-        try {
-          const sendResult = await resend.emails.send({
-            from: 'Alannah & Rob <hello@alannah-rob.ie>',
-            to: h.contact_email as string,
-            subject: h.evening_invite === true
-              ? 'Kind reminder: evening RSVP for Alannah & Rob'
-              : 'Kind reminder: RSVP for Alannah & Rob wedding',
-            html: buildReminderEmailHtml(
-              h.display_name as string,
-              `${baseUrl}/rsvp?token=${h.invite_token}`,
-              baseUrl,
-              h.evening_invite === true,
-            ),
-          });
-          if (sendResult.error || !sendResult.data?.id) {
-            throw new Error(sendResult.error?.message ?? 'Resend did not return a message id');
-          }
-          await sql`UPDATE households SET reminder_count = reminder_count + 1, last_reminder_at = now(), reminder_failed_count = 0, last_reminder_failed_at = NULL WHERE id = ${h.id}`;
-        } catch (error) {
-          await sql`UPDATE households SET reminder_failed_count = reminder_failed_count + 1, last_reminder_failed_at = now() WHERE id = ${h.id}`;
-          throw error;
-        }
-      },
-    });
-    return NextResponse.redirect(new URL(`/dashboard?reminder=done&sent=${sent}&failed=${failed}`, request.url));
-  }
-
-  if (action === 'resend_invite') {
-    if (!hasAdminAuth(request)) return NextResponse.redirect(new URL('/dashboard?error=unauthorized', request.url));
-    if (!isSameOriginRequest(request)) return NextResponse.redirect(new URL('/dashboard?error=unauthorized', request.url));
-    if (!csrfValid) return NextResponse.redirect(new URL('/dashboard?error=unauthorized', request.url));
-
-    const householdId = String(formData.get('household_id') ?? '').trim();
-    if (!householdId) return NextResponse.redirect(new URL('/dashboard?resend=failed', request.url));
-
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://alannah-rob.ie';
-    const rows = await sql`
-      SELECT h.id, h.invite_token, h.contact_email, h.evening_invite,
-        COALESCE((
-          SELECT string_agg(m.full_name, ' & ' ORDER BY m.sort_order, m.created_at)
-          FROM household_members m
-          WHERE m.household_id = h.id
-        ), h.contact_email) as display_name
-      FROM households h
-      WHERE h.id = ${householdId}
-        AND h.is_paper_invite = false
-        AND h.contact_email IS NOT NULL
-      LIMIT 1
-    `;
-    const household = rows[0];
-    if (!household) return NextResponse.redirect(new URL('/dashboard?resend=failed', request.url));
-
-    try {
-      const rsvpUrl = `${baseUrl}/rsvp?token=${household.invite_token}`;
-      const sendResult = await resend.emails.send({
-        from: 'Alannah & Rob <hello@alannah-rob.ie>',
-        to: household.contact_email as string,
-        subject: buildInviteEmailSubject(household.evening_invite === true),
-        html: buildInviteEmailHtml(
-          household.display_name as string,
-          rsvpUrl,
-          baseUrl,
-          household.evening_invite === true,
-        ),
-      });
-      if (sendResult.error || !sendResult.data?.id) {
-        throw new Error(sendResult.error?.message ?? 'Resend did not return a message id');
-      }
-      await sql`
-        UPDATE households
-        SET invited_at = COALESCE(invited_at, now()), invite_failed_count = 0, last_invite_failed_at = NULL, last_invite_error = NULL
-        WHERE id = ${household.id}
-      `;
-      return NextResponse.redirect(new URL('/dashboard?resend=done', request.url));
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown invite send failure';
-      await sql`
-        UPDATE households
-        SET invite_failed_count = invite_failed_count + 1, last_invite_failed_at = now(), last_invite_error = ${message}
-        WHERE id = ${household.id}
-      `;
-      return NextResponse.redirect(new URL('/dashboard?resend=failed', request.url));
-    }
-  }
+  if (!adminSecret) return dashboardRedirect(request, nextPath, 'missing_admin_secret');
 
   const password = formData.get('password');
-  const nextPath = String(formData.get('next') ?? '/dashboard');
   if (typeof password !== 'string' || password !== adminSecret) {
-    return NextResponse.redirect(new URL('/dashboard?error=invalid_password', request.url));
+    return dashboardRedirect(request, nextPath, 'invalid_password');
   }
 
   const response = NextResponse.redirect(new URL(nextPath, request.url));

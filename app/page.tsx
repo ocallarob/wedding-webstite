@@ -4,6 +4,7 @@ import { site } from '../src/content/site';
 import { Monogram } from '../src/components/Monogram';
 import { DateEasterEgg } from '../src/components/DateEasterEgg';
 import { IrishPhrase } from '../src/components/IrishPhrase';
+import { hasGalleryAccess } from '../src/lib/galleryAuth';
 
 const quickInfo = [
   { label: 'Date', value: site.dateText },
@@ -98,7 +99,11 @@ const footerNavItems = [
   { href: '/faq', label: 'FAQ' },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const showGallery = await hasGalleryAccess();
+  const navItems = showGallery ? [...homeNavItems, { href: '/gallery', label: 'Gallery' }] : homeNavItems;
+  const footerItems = showGallery ? [...footerNavItems, { href: '/gallery', label: 'Gallery' }] : footerNavItems;
+
   return (
     <div className="relative overflow-hidden bg-ivory">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(219,184,184,0.22),transparent_50%),radial-gradient(circle_at_85%_20%,rgba(143,168,136,0.15),transparent_35%)]" />
@@ -108,9 +113,9 @@ export default function HomePage() {
             <Link href="/" className="block w-fit shrink-0 no-underline" aria-label="Home">
               <Monogram size={52} />
             </Link>
-            <HomeHeroNav />
+            <HomeHeroNav navItems={navItems} />
             <div className="ml-auto lg:hidden">
-              <MobileHomeMenu />
+              <MobileHomeMenu navItems={navItems} />
             </div>
             <div className="hidden font-heading italic text-xl leading-none tracking-[0.18em] text-muted lg:block">
               <DateEasterEgg defaultText={site.date} targetDate={site.countdownDateTime} className="inline" />
@@ -305,7 +310,7 @@ export default function HomePage() {
             Any issues? Contact Rob or Alannah.
           </p>
           <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[10px] uppercase tracking-[0.2em] text-muted">
-            {footerNavItems.map((item) => (
+            {footerItems.map((item) => (
               <Link key={item.href} href={item.href} className="no-underline hover:text-mauve hover:underline">
                 {item.label}
               </Link>
@@ -327,10 +332,10 @@ export default function HomePage() {
   );
 }
 
-function HomeHeroNav() {
+function HomeHeroNav({ navItems }: { navItems: readonly { href: string; label: string }[] }) {
   return (
     <nav className="hidden flex-1 flex-wrap items-center justify-center gap-x-7 gap-y-2 text-[11px] uppercase tracking-[0.24em] text-muted lg:flex lg:gap-x-10">
-      {homeNavItems.map((item) => (
+      {navItems.map((item) => (
         <Link
           key={item.href}
           href={item.href}
@@ -343,14 +348,14 @@ function HomeHeroNav() {
   );
 }
 
-function MobileHomeMenu() {
+function MobileHomeMenu({ navItems }: { navItems: readonly { href: string; label: string }[] }) {
   return (
     <details className="group relative lg:hidden">
       <summary className="list-none rounded-full border border-stone/80 px-4 py-1 text-[10px] uppercase tracking-[0.22em] text-muted [&::-webkit-details-marker]:hidden">
         Menu
       </summary>
       <nav className="absolute left-1/2 top-[calc(100%+8px)] z-30 w-44 -translate-x-1/2 rounded-xl border border-stone bg-ivory/95 p-2 shadow-[0_10px_30px_rgba(58,53,48,0.12)] backdrop-blur-sm">
-        {homeNavItems.map((item) => (
+        {navItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
