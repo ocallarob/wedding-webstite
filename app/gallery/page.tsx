@@ -1,5 +1,6 @@
 import Image from 'next/image';
-import { site } from '../../src/content/site';
+import { MAX_JPEG_BYTES } from '../../src/lib/galleryConfig';
+import { GalleryClient } from './GalleryClient';
 
 export default function GalleryPage() {
   return (
@@ -14,28 +15,12 @@ export default function GalleryPage() {
             <Image src="/assets/divider-line-transparent.png" alt="" aria-hidden width={388} height={50} className="hidden h-auto w-20 flex-1 opacity-70 sm:block sm:w-28" />
           </div>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-muted">
-            A few favorites from our journey so far.
+            Share the moments you captured from our wedding weekend.
           </p>
         </header>
 
-        <section className="rounded-2xl border border-stone bg-ivory/85 p-6 shadow-[0_10px_30px_rgba(58,53,48,0.05)]">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {site.galleryImages.map((imageSrc, index) => (
-              <div key={imageSrc} className="overflow-hidden rounded-xl border border-stone/75 bg-ivory/80 p-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={imageSrc}
-                  alt={`Alannah and Rob photo ${index + 1}`}
-                  className={`aspect-[3/4] w-full rounded-lg ${
-                    imageSrc === '/photos/couple-01.jpg' ? 'bg-ivory object-contain' : 'object-cover'
-                  }`}
-                  loading="lazy"
-                  decoding="async"
-                />
-              </div>
-            ))}
-          </div>
-        </section>
+        <GalleryClient maxJpegBytes={MAX_JPEG_BYTES} />
+
       </div>
     </div>
   );

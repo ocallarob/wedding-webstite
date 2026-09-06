@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@10.14.0",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -14,14 +17,18 @@
     "db:seed": "tsx --env-file=.env.local scripts/seed.ts",
     "db:import-households": "tsx --env-file=.env.local scripts/import-households.ts",
     "db:append-households": "tsx --env-file=.env.local scripts/import-households.ts private/households-append.csv --apply --insert-only",
-    "db:update-household-addresses": "tsx --env-file=.env.local scripts/update-household-addresses.ts private/households-append.csv --apply"
+    "db:update-household-addresses": "tsx --env-file=.env.local scripts/update-household-addresses.ts private/households-append.csv --apply",
+    "gallery:import": "tsx --env-file=.env.local scripts/import-gallery.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
+    "@vercel/blob": "^2.8.0",
+    "@vercel/queue": "^0.5.1",
     "next": "^14.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "resend": "^6.12.2"
+    "resend": "^6.12.2",
+    "sharp": "^0.35.4"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",

@@ -12,10 +12,11 @@ type Props = {
   coupleNames: string;
   dateText: string;
   locationText: string;
+  showGallery?: boolean;
   children: React.ReactNode;
 };
 
-export function SiteFrame({ coupleNames, dateText, locationText, children }: Props) {
+export function SiteFrame({ coupleNames, dateText, locationText, showGallery = false, children }: Props) {
   const pathname = usePathname();
   const hideChrome = pathname === '/save-the-date' || pathname === '/' || pathname.startsWith('/dashboard');
   const footerNavItems = [
@@ -25,11 +26,12 @@ export function SiteFrame({ coupleNames, dateText, locationText, children }: Pro
     { href: '/weekend', label: 'Weekend' },
     { href: '/travel', label: 'Travel' },
     { href: '/faq', label: 'FAQ' },
+    ...(showGallery ? [{ href: '/gallery', label: 'Gallery' }] : []),
   ];
 
   return (
     <div className="min-h-screen flex flex-col bg-ivory text-charcoal">
-      {!hideChrome && <SiteHeader />}
+      {!hideChrome && <SiteHeader showGallery={showGallery} />}
       <main className="flex-1">{children}</main>
       {!hideChrome && (
         <footer className="border-t border-stone bg-ivory/70">

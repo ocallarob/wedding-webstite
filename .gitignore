@@ -8,3 +8,5 @@ npm-debug.log*
 out
 public/email-preview.html
 private/
+day1-guests.csv
+day1-table-assignments.csv

@@ -1,10 +1,11 @@
+import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { sql } from '../../src/lib/db';
 import { site } from '../../src/content/site';
-import { DashboardTable } from './DashboardTable';
-import { SendInitialInvitesButton } from './SendInitialInvitesButton';
-import { cookies } from 'next/headers';
-import { verifyAdminSessionToken } from '../../src/lib/adminSession';
 import { createCsrfToken } from '../../src/lib/csrf';
+import { verifyAdminSessionToken } from '../../src/lib/adminSession';
+import { AdminLoginForm } from './AdminLoginForm';
+import { DashboardTable } from './DashboardTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,11 +40,11 @@ type Row = {
 };
 
 type Props = {
-  searchParams: Promise<{ error?: string; reminder?: string; resend?: string; sent?: string; failed?: string }>;
+  searchParams: Promise<{ error?: string }>;
 };
 
 export default async function DashboardPage({ searchParams }: Props) {
-  const { error, reminder, resend, sent, failed } = await searchParams;
+  const { error } = await searchParams;
   const cookieStore = await cookies();
   const adminSession = cookieStore.get('admin_session')?.value;
   const adminSecret = process.env.ADMIN_SECRET;
@@ -51,28 +52,7 @@ export default async function DashboardPage({ searchParams }: Props) {
   const csrfToken = isAuthorized && adminSecret && adminSession ? createCsrfToken(adminSession, adminSecret) : '';
 
   if (!isAuthorized) {
-    return (
-      <div className="mx-auto flex min-h-screen w-full max-w-md items-center px-5">
-        <form action="/api/dashboard" method="POST" className="w-full rounded-2xl border border-stone bg-white/90 p-6 space-y-4">
-          <div className="space-y-1 text-center">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted">Dashboard</p>
-            <h1 className="font-heading text-2xl font-light text-charcoal">Admin access</h1>
-          </div>
-          <input type="hidden" name="next" value="/dashboard" />
-          <label className="block space-y-1.5 text-sm">
-            <span className="label-serif">Password</span>
-            <input type="password" name="password" required className="w-full rounded-xl border border-stone bg-white px-3 py-2.5" />
-          </label>
-          {error === 'invalid_password' && <p className="text-xs text-red-700">Password incorrect. Try again.</p>}
-          {error === 'missing_admin_secret' && (
-            <p className="text-xs text-red-700">
-              Dashboard is not configured. Add `ADMIN_SECRET` to this environment and redeploy.
-            </p>
-          )}
-          <button type="submit" className="btn btn-primary w-full">Open dashboard</button>
-        </form>
-      </div>
-    );
+    return <AdminLoginForm error={error} nextPath="/dashboard" />;
   }
 
   const rows = (await sql`
@@ -138,25 +118,19 @@ export default async function DashboardPage({ searchParams }: Props) {
       <header className="space-y-2 text-center">
         <p className="text-xs uppercase tracking-[0.2em] text-muted">Dashboard</p>
         <h1 className="font-heading text-4xl font-semibold text-charcoal">{site.coupleNames}</h1>
-        <div className="flex items-center justify-center gap-4 pt-1">
-          <SendInitialInvitesButton />
-          <form action="/api/dashboard" method="POST">
-            <input type="hidden" name="action" value="send_reminders" />
-            <input type="hidden" name="csrf_token" value={csrfToken} />
-            <button type="submit" className="text-xs text-mauve underline-offset-4 hover:underline hover:text-charcoal transition-colors">Send reminder batch</button>
-          </form>
+        <div className="flex flex-wrap items-center justify-center gap-4 pt-1">
+          <Link href="/dashboard/gallery" className="text-xs text-mauve underline-offset-4 hover:text-charcoal hover:underline">
+            Gallery admin
+          </Link>
           <form action="/api/dashboard" method="POST">
             <input type="hidden" name="action" value="logout" />
             <input type="hidden" name="csrf_token" value={csrfToken} />
-            <button type="submit" className="text-xs text-muted underline-offset-4 hover:underline hover:text-charcoal transition-colors">Log out</button>
+            <button type="submit" className="text-xs text-muted underline-offset-4 hover:text-charcoal hover:underline">
+              Log out
+            </button>
           </form>
         </div>
       </header>
-
-      {reminder === 'done' && <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-charcoal">Reminder batch complete: sent {sent ?? '0'}, failed {failed ?? '0'}.</p>}
-      {reminder === 'none' && <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-muted">No households currently need a reminder.</p>}
-      {resend === 'done' && <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-charcoal">Invite resend complete.</p>}
-      {resend === 'failed' && <p className="rounded-xl border border-red-200 bg-red-50/80 px-4 py-3 text-center text-sm text-red-700">Invite resend failed. See row send error for details.</p>}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
@@ -173,7 +147,7 @@ export default async function DashboardPage({ searchParams }: Props) {
         ))}
       </div>
 
-      <DashboardTable rows={rows} csrfToken={csrfToken} />
+      <DashboardTable rows={rows} />
     </div>
   );
 }
