@@ -36,14 +36,23 @@ type Row = {
   message: string | null;
   submitted_at: string | null;
   members: Member[];
+  upload_portal_expires_at: string | null;
 };
 
 type Props = {
-  searchParams: Promise<{ error?: string; reminder?: string; resend?: string; sent?: string; failed?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    reminder?: string;
+    resend?: string;
+    sent?: string;
+    failed?: string;
+    upload?: string;
+    upload_token?: string;
+  }>;
 };
 
 export default async function DashboardPage({ searchParams }: Props) {
-  const { error, reminder, resend, sent, failed } = await searchParams;
+  const { error, reminder, resend, sent, failed, upload, upload_token: uploadToken } = await searchParams;
   const cookieStore = await cookies();
   const adminSession = cookieStore.get('admin_session')?.value;
   const adminSecret = process.env.ADMIN_SECRET;
@@ -95,6 +104,13 @@ export default async function DashboardPage({ searchParams }: Props) {
       hr.song,
       hr.message,
       hr.submitted_at,
+      (
+        SELECT MAX(up.expires_at)
+        FROM upload_portal_capabilities up
+        WHERE up.household_id = h.id
+          AND up.revoked_at IS NULL
+          AND up.expires_at > now()
+      ) AS upload_portal_expires_at,
       COALESCE(json_agg(json_build_object(
         'full_name', m.full_name,
         'member_type', m.member_type,
@@ -133,6 +149,10 @@ export default async function DashboardPage({ searchParams }: Props) {
     0
   );
 
+  const uploadPortalLink = uploadToken
+    ? `${(process.env.NEXT_PUBLIC_BASE_URL ?? 'https://alannah-rob.ie').replace(/\/$/, '')}/upload?token=${encodeURIComponent(uploadToken)}`
+    : null;
+
   return (
     <div className="mx-auto max-w-6xl px-5 pt-[72px] pb-20 space-y-10">
       <header className="space-y-2 text-center">
@@ -157,6 +177,15 @@ export default async function DashboardPage({ searchParams }: Props) {
       {reminder === 'none' && <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-muted">No households currently need a reminder.</p>}
       {resend === 'done' && <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-charcoal">Invite resend complete.</p>}
       {resend === 'failed' && <p className="rounded-xl border border-red-200 bg-red-50/80 px-4 py-3 text-center text-sm text-red-700">Invite resend failed. See row send error for details.</p>}
+      {upload === 'done' && uploadPortalLink && (
+        <div className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-charcoal">
+          <p>Upload portal link ready.</p>
+          <a href={uploadPortalLink} className="mt-1 inline-block break-all text-mauve hover:text-charcoal">{uploadPortalLink}</a>
+        </div>
+      )}
+      {upload === 'failed' && <p className="rounded-xl border border-red-200 bg-red-50/80 px-4 py-3 text-center text-sm text-red-700">Upload portal link could not be changed.</p>}
+      {upload === 'revoked' && <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-charcoal">Upload portal link revoked.</p>}
+      {upload === 'sent' && <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-charcoal">Upload portal link sent to the household contact.</p>}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[

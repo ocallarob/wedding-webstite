@@ -110,6 +110,23 @@ async function migrate() {
   `;
 
   await sql`
+    CREATE TABLE IF NOT EXISTS upload_portal_capabilities (
+      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      household_id  UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+      token_hash    TEXT NOT NULL UNIQUE,
+      expires_at    TIMESTAMPTZ NOT NULL,
+      revoked_at    TIMESTAMPTZ,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `;
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS upload_portal_capabilities_active_idx
+    ON upload_portal_capabilities (household_id, expires_at)
+    WHERE revoked_at IS NULL
+  `;
+
+  await sql`
     CREATE TABLE IF NOT EXISTS gallery_assets (
       id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       public_key          TEXT NOT NULL UNIQUE,

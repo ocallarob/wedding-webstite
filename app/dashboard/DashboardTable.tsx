@@ -31,6 +31,7 @@ type Row = {
   message: string | null;
   submitted_at: string | null;
   members: Member[];
+  upload_portal_expires_at: string | null;
 };
 
 function householdName(row: Row): string {
@@ -174,7 +175,7 @@ export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: st
         <table className="w-full text-sm">
           <thead className="bg-stone/40 text-left">
             <tr>
-              {['Household', 'Contact', 'Invite Code', 'Guest Type', 'Paper Invite', 'Status', 'Send Status', 'Opened RSVP', 'Members', 'Song', 'Message'].map((h) => (
+              {['Household', 'Contact', 'Invite Code', 'Guest Type', 'Paper Invite', 'Status', 'Send Status', 'Upload portal', 'Opened RSVP', 'Members', 'Song', 'Message'].map((h) => (
                 <th key={h} className="px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-muted font-normal whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -214,6 +215,31 @@ export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: st
                   ) : null}
                 </td>
                 <td className="px-4 py-3 text-xs text-muted min-w-[240px]">
+                  <p>{row.upload_portal_expires_at ? `Active until ${formatDateTime(row.upload_portal_expires_at)}` : 'Not generated'}</p>
+                  {row.contact_email?.trim() ? (
+                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+                      <form action="/api/dashboard" method="POST">
+                        <input type="hidden" name="action" value={row.upload_portal_expires_at ? 'resend_upload_portal' : 'generate_upload_portal'} />
+                        <input type="hidden" name="csrf_token" value={csrfToken} />
+                        <input type="hidden" name="household_id" value={row.id} />
+                        <button type="submit" className="text-[11px] text-mauve underline-offset-4 hover:underline hover:text-charcoal transition-colors">
+                          {row.upload_portal_expires_at ? 'Resend link' : 'Generate link'}
+                        </button>
+                      </form>
+                      {row.upload_portal_expires_at ? (
+                        <form action="/api/dashboard" method="POST">
+                          <input type="hidden" name="action" value="revoke_upload_portal" />
+                          <input type="hidden" name="csrf_token" value={csrfToken} />
+                          <input type="hidden" name="household_id" value={row.id} />
+                          <button type="submit" className="text-[11px] text-red-700 underline-offset-4 hover:underline">Revoke</button>
+                        </form>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-red-700">Contact email required</p>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-xs text-muted min-w-[240px]">
                   <p>{openStatus(row)}</p>
                   {row.open_count > 1 ? <p className="mt-1">First opened {formatDateTime(row.first_opened_at)}</p> : null}
                 </td>
@@ -232,7 +258,7 @@ export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: st
             ))}
             {visibleRows.length === 0 && (
               <tr>
-                <td colSpan={11} className="px-4 py-10 text-center text-muted">No households match this search and filter.</td>
+                <td colSpan={12} className="px-4 py-10 text-center text-muted">No households match this search and filter.</td>
               </tr>
             )}
           </tbody>

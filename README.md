@@ -45,6 +45,9 @@ Current model (no legacy guest/partner dependency):
 - `household_members`
 - `household_rsvps`
 - `household_rsvp_opens`
+- `gallery_capabilities`
+- `upload_portal_capabilities`
+- `gallery_assets`
 
 Run schema migration:
 
@@ -114,6 +117,9 @@ Behavior:
   2. one best match only (paper invite households only)
   3. continue into normal `/rsvp?token=...` flow
 
+- `/upload?token=...`
+  Household-scoped Upload portal entry. The capability is generated, resent, and revoked from the admin dashboard.
+
 - `/dashboard`  
   Admin dashboard with:
   - guest-level summary counts
@@ -121,6 +127,7 @@ Behavior:
   - send status
   - RSVP open tracking
   - one-click reminder batch
+  - household Upload portal controls
 
 Admin APIs:
 - `POST /api/invites/send` (send new invites)
