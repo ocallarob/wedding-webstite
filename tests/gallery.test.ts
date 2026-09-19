@@ -55,6 +55,24 @@ describe('gallery viewer boundary', () => {
         created_at: '2026-09-19T11:00:00.000Z',
         moderation_status: 'pending',
       },
+      {
+        public_key: 'rejected-photo',
+        media_type: 'photo',
+        content_type: 'image/jpeg',
+        size_bytes: '2048',
+        display_name: 'Rejected photo.jpg',
+        created_at: '2026-09-19T10:00:00.000Z',
+        moderation_status: 'rejected',
+      },
+      {
+        public_key: 'removed-photo',
+        media_type: 'photo',
+        content_type: 'image/jpeg',
+        size_bytes: '2048',
+        display_name: 'Removed photo.jpg',
+        created_at: '2026-09-19T09:00:00.000Z',
+        moderation_status: 'removed',
+      },
     ]);
 
     const response = await listGallery(request(`/api/gallery?token=${galleryToken}`));

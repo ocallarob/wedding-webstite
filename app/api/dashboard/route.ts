@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { del } from '@vercel/blob';
 import { Resend } from 'resend';
 import { sql } from '../../../src/lib/db';
 import { checkRateLimit } from '../../../src/lib/rateLimit';
@@ -16,6 +17,136 @@ import {
 import type { IssuedUploadPortalCapability } from '../../../src/lib/uploadPortalCapabilities';
 
 export const dynamic = 'force-dynamic';
+
+type ModerationAction = 'publish_gallery_asset' | 'reject_gallery_asset' | 'remove_gallery_asset';
+type ModerationResult =
+  | 'published'
+  | 'already_published'
+  | 'rejected'
+  | 'already_rejected'
+  | 'removed'
+  | 'already_removed'
+  | 'cleanup_failed'
+  | 'missing'
+  | 'invalid_transition';
+
+function moderationRedirect(request: NextRequest, result: ModerationResult | 'unauthorized' | 'invalid_asset' | 'failed') {
+  return NextResponse.redirect(new URL(`/dashboard?moderation=${result}`, request.url), 303);
+}
+
+function isModerationAssetKey(value: FormDataEntryValue | null): value is string {
+  return typeof value === 'string' && /^[A-Za-z0-9_-]{16,256}$/.test(value);
+}
+
+async function cleanupGalleryAsset(assetId: string, storageKey: string): Promise<boolean> {
+  try {
+    await del(storageKey);
+    await sql`UPDATE gallery_assets SET cleanup_error = NULL WHERE id = ${assetId}`;
+    return true;
+  } catch (error) {
+    const message = error instanceof Error && error.message ? error.message.slice(0, 500) : 'Blob cleanup failed';
+    try {
+      await sql`UPDATE gallery_assets SET cleanup_error = ${message} WHERE id = ${assetId}`;
+    } catch {
+      // Moderation state remains authoritative if cleanup bookkeeping also fails.
+    }
+    return false;
+  }
+}
+
+async function moderateGalleryAsset(action: ModerationAction, assetKey: string): Promise<ModerationResult> {
+  const rows = await sql`
+    SELECT id, storage_key, moderation_status, cleanup_error
+    FROM gallery_assets
+    WHERE public_key = ${assetKey}
+    LIMIT 1
+  `;
+  const asset = rows[0];
+  if (!asset) return 'missing';
+
+  const id = String(asset.id);
+  const status = String(asset.moderation_status);
+  const storageKey = String(asset.storage_key);
+
+  if (action === 'publish_gallery_asset') {
+    if (status === 'published') return 'already_published';
+    if (status !== 'pending') return 'invalid_transition';
+
+    const updated = await sql`
+      UPDATE gallery_assets
+      SET moderation_status = 'published',
+          published_at = COALESCE(published_at, now()),
+          rejected_at = NULL,
+          removed_at = NULL,
+          cleanup_error = NULL
+      WHERE id = ${id} AND moderation_status = 'pending'
+      RETURNING id
+    `;
+    if (updated.length > 0) return 'published';
+
+    const current = await sql`
+      SELECT moderation_status
+      FROM gallery_assets
+      WHERE id = ${id}
+      LIMIT 1
+    `;
+    return current[0]?.moderation_status === 'published' ? 'already_published' : 'invalid_transition';
+  }
+
+  if (action === 'reject_gallery_asset') {
+    if (status === 'rejected') {
+      if (asset.cleanup_error) return (await cleanupGalleryAsset(id, storageKey)) ? 'already_rejected' : 'cleanup_failed';
+      return 'already_rejected';
+    }
+    if (status !== 'pending') return 'invalid_transition';
+
+    const updated = await sql`
+      UPDATE gallery_assets
+      SET moderation_status = 'rejected',
+          rejected_at = COALESCE(rejected_at, now()),
+          cleanup_error = 'cleanup_pending'
+      WHERE id = ${id} AND moderation_status = 'pending'
+      RETURNING id
+    `;
+    if (updated.length === 0) {
+      const current = await sql`
+        SELECT moderation_status
+        FROM gallery_assets
+        WHERE id = ${id}
+        LIMIT 1
+      `;
+      return current[0]?.moderation_status === 'rejected' ? 'already_rejected' : 'invalid_transition';
+    }
+
+    return (await cleanupGalleryAsset(id, storageKey)) ? 'rejected' : 'cleanup_failed';
+  }
+
+  if (status === 'removed') {
+    if (asset.cleanup_error) return (await cleanupGalleryAsset(id, storageKey)) ? 'already_removed' : 'cleanup_failed';
+    return 'already_removed';
+  }
+  if (status !== 'published') return 'invalid_transition';
+
+  const updated = await sql`
+    UPDATE gallery_assets
+    SET moderation_status = 'removed',
+        removed_at = COALESCE(removed_at, now()),
+        cleanup_error = 'cleanup_pending'
+    WHERE id = ${id} AND moderation_status = 'published'
+    RETURNING id
+  `;
+  if (updated.length === 0) {
+    const current = await sql`
+      SELECT moderation_status
+      FROM gallery_assets
+      WHERE id = ${id}
+      LIMIT 1
+    `;
+    return current[0]?.moderation_status === 'removed' ? 'already_removed' : 'invalid_transition';
+  }
+
+  return (await cleanupGalleryAsset(id, storageKey)) ? 'removed' : 'cleanup_failed';
+}
 
 export async function GET(request: NextRequest) {
   if (!hasAdminAuth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -86,6 +217,22 @@ export async function POST(request: NextRequest) {
 
   if (!adminSecret) {
     return NextResponse.redirect(new URL('/dashboard?error=missing_admin_secret', request.url));
+  }
+
+  if (action === 'publish_gallery_asset' || action === 'reject_gallery_asset' || action === 'remove_gallery_asset') {
+    if (!hasAdminAuth(request)) return moderationRedirect(request, 'unauthorized');
+    if (!isSameOriginRequest(request)) return moderationRedirect(request, 'unauthorized');
+    if (!csrfValid) return moderationRedirect(request, 'unauthorized');
+
+    const assetKey = formData.get('asset_key');
+    if (!isModerationAssetKey(assetKey)) return moderationRedirect(request, 'invalid_asset');
+
+    try {
+      const result = await moderateGalleryAsset(action, assetKey);
+      return moderationRedirect(request, result);
+    } catch {
+      return moderationRedirect(request, 'failed');
+    }
   }
 
   if (action === 'generate_upload_portal' || action === 'resend_upload_portal' || action === 'revoke_upload_portal') {
