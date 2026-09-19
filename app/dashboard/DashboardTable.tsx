@@ -107,7 +107,7 @@ function guestTypeLabel(eveningInvite: boolean): string {
 
 export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: string }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'coming' | 'not_coming' | 'no_response' | 'not_invited'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'coming' | 'not_coming' | 'no_response' | 'not_invited'>('coming');
 
   const visibleRows = useMemo(() => {
     const sorted = [...rows].sort((a, b) => {
