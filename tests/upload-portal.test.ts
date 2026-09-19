@@ -7,17 +7,25 @@ const mocks = vi.hoisted(() => ({
   sql: vi.fn(),
   checkRateLimit: vi.fn(),
   sendEmail: vi.fn(),
+  handleUpload: vi.fn(),
+  head: vi.fn(),
+  del: vi.fn(),
 }));
 
 vi.mock('../src/lib/db', () => ({ sql: mocks.sql }));
 vi.mock('../src/lib/rateLimit', () => ({ checkRateLimit: mocks.checkRateLimit }));
+vi.mock('@vercel/blob', () => ({
+  head: mocks.head,
+  del: mocks.del,
+}));
+vi.mock('@vercel/blob/client', () => ({ handleUpload: mocks.handleUpload }));
 vi.mock('resend', () => ({
   Resend: class {
     emails = { send: mocks.sendEmail };
   },
 }));
 
-import { GET as getUploadPortal } from '../app/api/upload/route';
+import { GET as getUploadPortal, POST as postUpload } from '../app/api/upload/route';
 import { POST as postDashboard } from '../app/api/dashboard/route';
 
 const validToken = `up_${'a'.repeat(43)}`;
@@ -26,6 +34,17 @@ type AdminRequestOptions = { authenticated?: boolean; origin?: string };
 function getRequest(token: string): NextRequest {
   return new NextRequest(`http://localhost/api/upload?token=${encodeURIComponent(token)}`, {
     headers: { 'x-forwarded-for': '198.51.100.10' },
+  });
+}
+
+function uploadRequest(token: string, body: unknown): NextRequest {
+  return new NextRequest(`http://localhost/api/upload?token=${encodeURIComponent(token)}`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+    headers: {
+      'content-type': 'application/json',
+      'x-forwarded-for': '198.51.100.10',
+    },
   });
 }
 
@@ -228,5 +247,211 @@ describe('Upload portal boundary', () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get('location')).toContain('error=unauthorized');
+  });
+
+  it('creates a bounded upload session without exposing household details', async () => {
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    mocks.sql
+      .mockResolvedValueOnce([{
+        household_id: 'household-a',
+        expires_at: expiresAt,
+        revoked_at: null,
+        contact_available: true,
+      }])
+      .mockResolvedValueOnce([{ id: '550e8400-e29b-41d4-a716-446655440000', expires_at: expiresAt }]);
+
+    const response = await postUpload(uploadRequest(validToken, {
+      action: 'initiate',
+      assets: [
+        { name: 'ceremony.jpg', content_type: 'image/jpeg', size_bytes: 2048 },
+        { name: 'speeches.mp4', content_type: 'video/mp4', size_bytes: 4096 },
+      ],
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(body).toEqual({ upload_session_id: '550e8400-e29b-41d4-a716-446655440000', expires_at: expiresAt });
+    expect(JSON.stringify(body)).not.toContain('household-a');
+  });
+
+  it('rejects unsupported assets before creating storage work', async () => {
+    const response = await postUpload(uploadRequest(validToken, {
+      action: 'initiate',
+      assets: [{ name: 'notes.txt', content_type: 'text/plain', size_bytes: 100 }],
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe('Some selected assets are invalid');
+    expect(body.errors).toEqual([{ index: 0, message: expect.stringContaining('not supported') }]);
+    expect(mocks.sql).not.toHaveBeenCalled();
+  });
+
+  it('issues a constrained private upload token only for the authorized household session', async () => {
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    mocks.sql
+      .mockResolvedValueOnce([{
+        household_id: 'household-a',
+        expires_at: expiresAt,
+        revoked_at: null,
+        contact_available: true,
+      }])
+      .mockResolvedValueOnce([{ expires_at: expiresAt }]);
+    mocks.handleUpload.mockImplementation(async ({ onBeforeGenerateToken }: { onBeforeGenerateToken: Function }) => {
+      await onBeforeGenerateToken(
+        'guest-submissions/550e8400-e29b-41d4-a716-446655440000/ceremony.jpg',
+        JSON.stringify({
+          session_id: '550e8400-e29b-41d4-a716-446655440000',
+          display_name: 'ceremony.jpg',
+          content_type: 'image/jpeg',
+          size_bytes: 2048,
+        }),
+        false,
+      );
+      return { type: 'blob.generate-client-token', clientToken: 'client-token' };
+    });
+
+    const response = await postUpload(uploadRequest(validToken, {
+      type: 'blob.generate-client-token',
+      payload: {
+        pathname: 'guest-submissions/550e8400-e29b-41d4-a716-446655440000/ceremony.jpg',
+        clientPayload: JSON.stringify({
+          session_id: '550e8400-e29b-41d4-a716-446655440000',
+          display_name: 'ceremony.jpg',
+          content_type: 'image/jpeg',
+          size_bytes: 2048,
+        }),
+        multipart: false,
+      },
+    }));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ type: 'blob.generate-client-token', clientToken: 'client-token' });
+  });
+
+  it('records a completed private upload as a Pending submission for its session household', async () => {
+    mocks.sql
+      .mockResolvedValueOnce([{ household_id: 'household-a', expires_at: new Date(Date.now() + 60_000).toISOString() }])
+      .mockResolvedValueOnce([{ id: 'asset-a' }])
+      .mockResolvedValueOnce([]);
+    mocks.head.mockResolvedValue({
+      pathname: 'guest-submissions/550e8400-e29b-41d4-a716-446655440000/ceremony-abc.jpg',
+      contentType: 'image/jpeg',
+      size: 2048,
+    });
+    mocks.handleUpload.mockImplementation(async ({ body, onUploadCompleted }: { body: { payload: unknown }; onUploadCompleted: Function }) => {
+      await onUploadCompleted(body.payload);
+      return { type: 'blob.upload-completed', response: 'ok' };
+    });
+
+    const response = await postUpload(uploadRequest(validToken, {
+      type: 'blob.upload-completed',
+      payload: {
+        blob: {
+          pathname: 'guest-submissions/550e8400-e29b-41d4-a716-446655440000/ceremony-abc.jpg',
+          contentType: 'image/jpeg',
+          url: 'https://private.blob.vercel-storage.com/secret',
+        },
+        tokenPayload: JSON.stringify({
+          session_id: '550e8400-e29b-41d4-a716-446655440000',
+          pathname: 'guest-submissions/550e8400-e29b-41d4-a716-446655440000/ceremony.jpg',
+          display_name: 'ceremony.jpg',
+          content_type: 'image/jpeg',
+          size_bytes: 2048,
+        }),
+      },
+    }));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ type: 'blob.upload-completed', response: 'ok' });
+    expect(mocks.head).toHaveBeenCalledWith('guest-submissions/550e8400-e29b-41d4-a716-446655440000/ceremony-abc.jpg');
+    expect(mocks.sql).toHaveBeenCalledTimes(3);
+  });
+
+  it('confirms a direct upload only for the authorized session and returns awaiting review', async () => {
+    const expiresAt = new Date(Date.now() + 60_000).toISOString();
+    mocks.sql
+      .mockResolvedValueOnce([{
+        household_id: 'household-a',
+        expires_at: expiresAt,
+        revoked_at: null,
+        contact_available: true,
+      }])
+      .mockResolvedValueOnce([{ household_id: 'household-a' }])
+      .mockResolvedValueOnce([{ household_id: 'household-a' }])
+      .mockResolvedValueOnce([{ id: 'asset-a' }])
+      .mockResolvedValueOnce([]);
+    mocks.head.mockResolvedValue({
+      pathname: 'guest-submissions/550e8400-e29b-41d4-a716-446655440000/ceremony-abc.jpg',
+      contentType: 'image/jpeg',
+      size: 2048,
+    });
+    mocks.handleUpload.mockImplementation(async ({ body, onUploadCompleted }: { body: { payload: unknown }; onUploadCompleted: Function }) => {
+      await onUploadCompleted(body.payload);
+      return { type: 'blob.upload-completed', response: 'ok' };
+    });
+
+    const response = await postUpload(uploadRequest(validToken, {
+      action: 'confirm',
+      session_id: '550e8400-e29b-41d4-a716-446655440000',
+      pathname: 'guest-submissions/550e8400-e29b-41d4-a716-446655440000/ceremony-abc.jpg',
+      display_name: 'ceremony.jpg',
+      content_type: 'image/jpeg',
+      size_bytes: 2048,
+    }));
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual({ status: 'pending', awaiting_review: true });
+  });
+
+  it('rejects a visit that exceeds the configured asset-count limit before storage work', async () => {
+    const response = await postUpload(uploadRequest(validToken, {
+      action: 'initiate',
+      assets: Array.from({ length: 21 }, (_, index) => ({
+        name: `photo-${index}.jpg`,
+        content_type: 'image/jpeg',
+        size_bytes: 2048,
+      })),
+    }));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: 'Some selected assets are invalid',
+      errors: [{ index: 0, message: 'You can contribute up to 20 assets per visit.' }],
+    });
+    expect(mocks.sql).not.toHaveBeenCalled();
+  });
+
+  it('returns a safe actionable response when the storage provider fails', async () => {
+    mocks.handleUpload.mockRejectedValue(new Error('provider secret details'));
+
+    const response = await postUpload(uploadRequest(validToken, {
+      type: 'blob.upload-completed',
+      payload: {
+        blob: { pathname: 'guest-submissions/550e8400-e29b-41d4-a716-446655440000/photo.jpg' },
+        tokenPayload: JSON.stringify({ session_id: '550e8400-e29b-41d4-a716-446655440000' }),
+      },
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toEqual({ error: 'Upload provider unavailable. Try again shortly.' });
+    expect(JSON.stringify(body)).not.toContain('provider secret details');
+  });
+
+  it('rate-limits upload callbacks without exposing provider details', async () => {
+    mocks.checkRateLimit.mockResolvedValue(false);
+
+    const response = await postUpload(uploadRequest(validToken, {
+      type: 'blob.upload-completed',
+      payload: {
+        blob: { pathname: 'guest-submissions/path/photo.jpg' },
+        tokenPayload: JSON.stringify({ session_id: '550e8400-e29b-41d4-a716-446655440000' }),
+      },
+    }));
+
+    expect(response.status).toBe(429);
+    expect(await response.json()).toEqual({ error: 'Too many upload callbacks' });
+    expect(mocks.handleUpload).not.toHaveBeenCalled();
   });
 });

@@ -21,6 +21,33 @@ export const UPLOAD_PORTAL_RESEND_RATE_LIMIT = {
   windowSeconds: 60,
 } as const;
 
+export const UPLOAD_PORTAL_SESSION_TTL_SECONDS = 30 * 60;
+export const UPLOAD_MAX_ASSETS_PER_VISIT = 20;
+export const UPLOAD_MAX_ASSET_BYTES = 100 * 1024 * 1024;
+export const UPLOAD_ALLOWED_CONTENT_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+  'video/mp4',
+  'video/quicktime',
+  'video/webm',
+] as const;
+export const UPLOAD_PORTAL_CONTRIBUTION_RATE_LIMIT = {
+  limit: 30,
+  windowSeconds: 60,
+} as const;
+export const UPLOAD_PORTAL_CALLBACK_RATE_LIMIT = {
+  limit: 120,
+  windowSeconds: 60,
+} as const;
+
+export const UPLOAD_PORTAL_CONFIRM_RATE_LIMIT = {
+  limit: 30,
+  windowSeconds: 60,
+} as const;
+
 export type GalleryMediaType = 'photo' | 'video';
 
 export function isGalleryToken(value: unknown): value is string {

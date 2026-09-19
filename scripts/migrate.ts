@@ -126,6 +126,24 @@ async function migrate() {
     WHERE revoked_at IS NULL
   `;
 
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS gallery_upload_sessions (
+      id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      household_id           UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+      capability_token_hash  TEXT NOT NULL,
+      asset_count            INTEGER NOT NULL CHECK (asset_count > 0),
+      issued_count           INTEGER NOT NULL DEFAULT 0 CHECK (issued_count >= 0),
+      completed_count        INTEGER NOT NULL DEFAULT 0 CHECK (completed_count >= 0),
+      expires_at              TIMESTAMPTZ NOT NULL,
+      created_at              TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `;
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS gallery_upload_sessions_active_idx
+    ON gallery_upload_sessions (household_id, expires_at)
+  `;
   await sql`
     CREATE TABLE IF NOT EXISTS gallery_assets (
       id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),

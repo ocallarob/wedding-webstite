@@ -4,7 +4,7 @@
 
 **Blocked by:** 02: Open household-scoped Upload portal
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] The server validates allowed photo/video media types, configured per-asset byte limits, and configured per-visit asset-count limits before storage work where possible; rejected assets receive actionable validation errors.
 - [ ] Direct browser-to-private-storage transfer reports independent progress and error states for each selected asset, so one failure does not hide other outcomes.
