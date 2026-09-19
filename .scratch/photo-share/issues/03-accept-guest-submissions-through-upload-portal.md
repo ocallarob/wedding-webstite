@@ -11,7 +11,7 @@
 - [x] Successful contributions create Pending submissions associated with the authorized household and return a clear awaiting-review confirmation; they remain invisible to gallery viewers.
 - [x] A valid portal capability cannot create a submission for another household, attendance does not gate contribution, and contact email or household details are not exposed through viewer-facing responses.
 - [x] Contribution initiation and callbacks are rate-limited, provider and callback failures return safe actionable errors, and route-boundary coverage proves authorization, validation, persistence, and pending visibility behavior.
- 
+
 ## Answer
 
 Implemented the Upload portal submission flow:
