@@ -17,7 +17,7 @@ type Props = {
 
 export function SiteFrame({ coupleNames, dateText, locationText, children }: Props) {
   const pathname = usePathname();
-  const hideChrome = pathname === '/save-the-date' || pathname === '/' || pathname.startsWith('/dashboard');
+  const hideChrome = pathname === '/save-the-date' || pathname === '/' || pathname.startsWith('/dashboard') || pathname === '/upload';
   const footerNavItems = [
     { href: '/', label: 'Home' },
     { href: '/our-story', label: 'Our Story' },

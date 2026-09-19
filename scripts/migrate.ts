@@ -19,11 +19,16 @@ async function migrate() {
       invited_at             TIMESTAMPTZ,
       invite_failed_count    INTEGER NOT NULL DEFAULT 0,
       last_invite_failed_at  TIMESTAMPTZ,
-      reminder_count         INTEGER NOT NULL DEFAULT 0,
-      reminder_failed_count  INTEGER NOT NULL DEFAULT 0,
-      last_reminder_at       TIMESTAMPTZ,
-      last_reminder_failed_at TIMESTAMPTZ,
-      created_at             TIMESTAMPTZ NOT NULL DEFAULT now()
+      reminder_count            INTEGER NOT NULL DEFAULT 0,
+      reminder_failed_count     INTEGER NOT NULL DEFAULT 0,
+      last_reminder_at          TIMESTAMPTZ,
+      last_reminder_failed_at   TIMESTAMPTZ,
+      gallery_announcement_sent_at        TIMESTAMPTZ,
+      gallery_announcement_sending_at     TIMESTAMPTZ,
+      gallery_announcement_failed_count   INTEGER NOT NULL DEFAULT 0,
+      gallery_announcement_last_failed_at TIMESTAMPTZ,
+      gallery_announcement_last_error     TEXT,
+      created_at                TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `;
 
@@ -31,6 +36,11 @@ async function migrate() {
   await sql`ALTER TABLE households ADD COLUMN IF NOT EXISTS address_line_one TEXT`;
   await sql`ALTER TABLE households ADD COLUMN IF NOT EXISTS evening_invite BOOLEAN NOT NULL DEFAULT false`;
   await sql`ALTER TABLE households ALTER COLUMN contact_email DROP NOT NULL`;
+  await sql`ALTER TABLE households ADD COLUMN IF NOT EXISTS gallery_announcement_sent_at TIMESTAMPTZ`;
+  await sql`ALTER TABLE households ADD COLUMN IF NOT EXISTS gallery_announcement_sending_at TIMESTAMPTZ`;
+  await sql`ALTER TABLE households ADD COLUMN IF NOT EXISTS gallery_announcement_failed_count INTEGER NOT NULL DEFAULT 0`;
+  await sql`ALTER TABLE households ADD COLUMN IF NOT EXISTS gallery_announcement_last_failed_at TIMESTAMPTZ`;
+  await sql`ALTER TABLE households ADD COLUMN IF NOT EXISTS gallery_announcement_last_error TEXT`;
   await sql`
     CREATE UNIQUE INDEX IF NOT EXISTS households_paper_address_line_one_idx
     ON households (lower(address_line_one))
@@ -92,6 +102,88 @@ async function migrate() {
   await sql`
     CREATE INDEX IF NOT EXISTS api_rate_limits_window_start_idx
     ON api_rate_limits (window_start)
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS gallery_capabilities (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      token_hash   TEXT NOT NULL UNIQUE,
+      expires_at   TIMESTAMPTZ NOT NULL,
+      revoked_at   TIMESTAMPTZ
+    )
+  `;
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS gallery_capabilities_active_idx
+    ON gallery_capabilities (expires_at)
+    WHERE revoked_at IS NULL
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS upload_portal_capabilities (
+      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      household_id  UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+      token_hash    TEXT NOT NULL UNIQUE,
+      expires_at    TIMESTAMPTZ NOT NULL,
+      revoked_at    TIMESTAMPTZ,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `;
+
+  await sql`ALTER TABLE upload_portal_capabilities ADD COLUMN IF NOT EXISTS upload_visit_started_at TIMESTAMPTZ`;
+  await sql`ALTER TABLE upload_portal_capabilities ADD COLUMN IF NOT EXISTS upload_visit_asset_count INTEGER NOT NULL DEFAULT 0`;
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS upload_portal_capabilities_active_idx
+    ON upload_portal_capabilities (household_id, expires_at)
+    WHERE revoked_at IS NULL
+  `;
+
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS gallery_upload_sessions (
+      id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      household_id           UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+      capability_token_hash  TEXT NOT NULL,
+      asset_count            INTEGER NOT NULL CHECK (asset_count > 0),
+      issued_count           INTEGER NOT NULL DEFAULT 0 CHECK (issued_count >= 0),
+      expires_at              TIMESTAMPTZ NOT NULL,
+      created_at              TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `;
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS gallery_upload_sessions_active_idx
+    ON gallery_upload_sessions (household_id, expires_at)
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS gallery_assets (
+      id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      public_key          TEXT NOT NULL UNIQUE,
+      household_id        UUID REFERENCES households(id) ON DELETE SET NULL,
+      storage_key         TEXT NOT NULL UNIQUE,
+      media_type          TEXT NOT NULL CHECK (media_type IN ('photo', 'video')),
+      content_type        TEXT NOT NULL,
+      size_bytes          BIGINT NOT NULL CHECK (size_bytes >= 0),
+      display_name        TEXT NOT NULL,
+      moderation_status   TEXT NOT NULL DEFAULT 'pending'
+        CHECK (moderation_status IN ('pending', 'published', 'rejected', 'removed')),
+      created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+      published_at        TIMESTAMPTZ,
+      rejected_at         TIMESTAMPTZ,
+      removed_at          TIMESTAMPTZ,
+      cleanup_error       TEXT
+    )
+  `;
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS gallery_assets_viewer_idx
+    ON gallery_assets (moderation_status, created_at DESC)
+  `;
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS gallery_assets_household_idx
+    ON gallery_assets (household_id, created_at DESC)
   `;
 
   console.log('Migration complete');
