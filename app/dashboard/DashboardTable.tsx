@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { ExpandableCell } from './ExpandableCell';
+import { isGalleryAnnouncementEligible } from '../../src/lib/galleryAnnouncement';
 
 type Member = {
   full_name: string;
@@ -24,6 +25,10 @@ type Row = {
   last_invite_error: string | null;
   reminder_count: number;
   reminder_failed_count: number;
+  gallery_announcement_sent_at: string | null;
+  gallery_announcement_sending_at: string | null;
+  gallery_announcement_failed_count: number;
+  gallery_announcement_last_error: string | null;
   open_count: number;
   first_opened_at: string | null;
   last_opened_at: string | null;
@@ -175,7 +180,7 @@ export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: st
         <table className="w-full text-sm">
           <thead className="bg-stone/40 text-left">
             <tr>
-              {['Household', 'Contact', 'Invite Code', 'Guest Type', 'Paper Invite', 'Status', 'Send Status', 'Upload portal', 'Opened RSVP', 'Members', 'Song', 'Message'].map((h) => (
+              {['Household', 'Contact', 'Invite Code', 'Guest Type', 'Paper Invite', 'Status', 'Send Status', 'Upload portal', 'Gallery announcement', 'Opened RSVP', 'Members', 'Song', 'Message'].map((h) => (
                 <th key={h} className="px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-muted font-normal whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -230,6 +235,20 @@ export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: st
                   )}
                 </td>
                 <td className="px-4 py-3 text-xs text-muted min-w-[240px]">
+                  {isGalleryAnnouncementEligible(row) ? (
+                    row.gallery_announcement_sent_at
+                      ? `Sent ${formatDateTime(row.gallery_announcement_sent_at)}`
+                      : row.gallery_announcement_sending_at
+                        ? row.gallery_announcement_last_error ? 'Retry pending' : 'Sending'
+                        : row.gallery_announcement_failed_count > 0
+                          ? `Failed (${row.gallery_announcement_failed_count})`
+                          : 'Not sent'
+                  ) : 'Not eligible'}
+                  {row.gallery_announcement_last_error && !row.gallery_announcement_sent_at ? (
+                    <p className="mt-1 break-words text-red-700">{row.gallery_announcement_last_error}</p>
+                  ) : null}
+                </td>
+                <td className="px-4 py-3 text-xs text-muted min-w-[240px]">
                   <p>{openStatus(row)}</p>
                   {row.open_count > 1 ? <p className="mt-1">First opened {formatDateTime(row.first_opened_at)}</p> : null}
                 </td>
@@ -248,7 +267,7 @@ export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: st
             ))}
             {visibleRows.length === 0 && (
               <tr>
-                <td colSpan={12} className="px-4 py-10 text-center text-muted">No households match this search and filter.</td>
+                <td colSpan={13} className="px-4 py-10 text-center text-muted">No households match this search and filter.</td>
               </tr>
             )}
           </tbody>

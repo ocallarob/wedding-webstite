@@ -19,11 +19,16 @@ async function migrate() {
       invited_at             TIMESTAMPTZ,
       invite_failed_count    INTEGER NOT NULL DEFAULT 0,
       last_invite_failed_at  TIMESTAMPTZ,
-      reminder_count         INTEGER NOT NULL DEFAULT 0,
-      reminder_failed_count  INTEGER NOT NULL DEFAULT 0,
-      last_reminder_at       TIMESTAMPTZ,
-      last_reminder_failed_at TIMESTAMPTZ,
-      created_at             TIMESTAMPTZ NOT NULL DEFAULT now()
+      reminder_count            INTEGER NOT NULL DEFAULT 0,
+      reminder_failed_count     INTEGER NOT NULL DEFAULT 0,
+      last_reminder_at          TIMESTAMPTZ,
+      last_reminder_failed_at   TIMESTAMPTZ,
+      gallery_announcement_sent_at        TIMESTAMPTZ,
+      gallery_announcement_sending_at     TIMESTAMPTZ,
+      gallery_announcement_failed_count   INTEGER NOT NULL DEFAULT 0,
+      gallery_announcement_last_failed_at TIMESTAMPTZ,
+      gallery_announcement_last_error     TEXT,
+      created_at                TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `;
 
@@ -31,6 +36,11 @@ async function migrate() {
   await sql`ALTER TABLE households ADD COLUMN IF NOT EXISTS address_line_one TEXT`;
   await sql`ALTER TABLE households ADD COLUMN IF NOT EXISTS evening_invite BOOLEAN NOT NULL DEFAULT false`;
   await sql`ALTER TABLE households ALTER COLUMN contact_email DROP NOT NULL`;
+  await sql`ALTER TABLE households ADD COLUMN IF NOT EXISTS gallery_announcement_sent_at TIMESTAMPTZ`;
+  await sql`ALTER TABLE households ADD COLUMN IF NOT EXISTS gallery_announcement_sending_at TIMESTAMPTZ`;
+  await sql`ALTER TABLE households ADD COLUMN IF NOT EXISTS gallery_announcement_failed_count INTEGER NOT NULL DEFAULT 0`;
+  await sql`ALTER TABLE households ADD COLUMN IF NOT EXISTS gallery_announcement_last_failed_at TIMESTAMPTZ`;
+  await sql`ALTER TABLE households ADD COLUMN IF NOT EXISTS gallery_announcement_last_error TEXT`;
   await sql`
     CREATE UNIQUE INDEX IF NOT EXISTS households_paper_address_line_one_idx
     ON households (lower(address_line_one))

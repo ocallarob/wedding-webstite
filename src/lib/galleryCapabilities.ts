@@ -5,6 +5,10 @@ import { GALLERY_TOKEN_TTL_SECONDS, isGalleryToken } from './galleryConfig';
 export function hashGalleryToken(token: string): string {
   return createHash('sha256').update(token, 'utf8').digest('hex');
 }
+export type IssuedGalleryCapability = {
+  token: string;
+  expiresAt: Date;
+};
 
 export async function isValidGalleryCapability(token: unknown): Promise<boolean> {
   if (!isGalleryToken(token)) return false;
@@ -21,7 +25,7 @@ export async function isValidGalleryCapability(token: unknown): Promise<boolean>
   return rows.length > 0;
 }
 
-export async function createGalleryCapability(): Promise<{ token: string; expiresAt: Date }> {
+export async function createGalleryCapability(): Promise<IssuedGalleryCapability> {
   const token = randomBytes(32).toString('base64url');
   const expiresAt = new Date(Date.now() + GALLERY_TOKEN_TTL_SECONDS * 1000);
 

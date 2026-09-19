@@ -20,6 +20,8 @@ export const UPLOAD_PORTAL_RESEND_RATE_LIMIT = {
   limit: 1,
   windowSeconds: 60,
 } as const;
+export const GALLERY_ANNOUNCEMENT_INTERVAL_MS = 250;
+export const GALLERY_ANNOUNCEMENT_CLAIM_TTL_SECONDS = 10 * 60;
 
 export const UPLOAD_PORTAL_SESSION_TTL_SECONDS = 30 * 60;
 export const UPLOAD_MAX_ASSETS_PER_VISIT = 20;

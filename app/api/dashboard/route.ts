@@ -3,11 +3,16 @@ import { del } from '@vercel/blob';
 import { Resend } from 'resend';
 import { sql } from '../../../src/lib/db';
 import { checkRateLimit } from '../../../src/lib/rateLimit';
-import { UPLOAD_PORTAL_RESEND_RATE_LIMIT } from '../../../src/lib/galleryConfig';
+import { UPLOAD_PORTAL_RESEND_RATE_LIMIT, GALLERY_ANNOUNCEMENT_INTERVAL_MS, GALLERY_ANNOUNCEMENT_CLAIM_TTL_SECONDS } from '../../../src/lib/galleryConfig';
 import { ADMIN_COOKIE_NAME, hasAdminAuth, isSameOriginRequest } from '../../../src/lib/adminAuth';
 import { createAdminSessionToken, SESSION_TTL_SECONDS } from '../../../src/lib/adminSession';
 import { verifyCsrfToken } from '../../../src/lib/csrf';
 import { buildUploadPortalEmailHtml } from '../../../src/lib/uploadPortalEmailHtml';
+import { buildGalleryAnnouncementEmailHtml, buildGalleryAnnouncementSubject } from '../../../src/lib/galleryAnnouncementEmailHtml';
+import { createGalleryCapability } from '../../../src/lib/galleryCapabilities';
+import type { IssuedGalleryCapability } from '../../../src/lib/galleryCapabilities';
+import { isGalleryAnnouncementEligible, galleryAnnouncementDisplayName } from '../../../src/lib/galleryAnnouncement';
+import { runThrottledBatch } from '../../../src/lib/throttledBatch';
 import {
   createUploadPortalCapability,
   revokeOtherUploadPortalCapabilities,
@@ -17,6 +22,7 @@ import {
 import type { IssuedUploadPortalCapability } from '../../../src/lib/uploadPortalCapabilities';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 120;
 
 type ModerationAction = 'publish_gallery_asset' | 'reject_gallery_asset' | 'remove_gallery_asset';
 type ModerationResult =
@@ -30,9 +36,160 @@ type ModerationResult =
   | 'missing'
   | 'invalid_transition';
 
+type GalleryAnnouncementRow = {
+  id: string;
+  label: string | null;
+  contact_email: string | null;
+  gallery_announcement_sent_at: string | null;
+  gallery_announcement_sending_at: string | null;
+  members: unknown;
+};
+
+type GalleryAnnouncementBatchResult = {
+  sent: number;
+  failed: number;
+};
+
 function moderationRedirect(request: NextRequest, result: ModerationResult | 'unauthorized' | 'invalid_asset' | 'failed') {
   return NextResponse.redirect(new URL(`/dashboard?moderation=${result}`, request.url), 303);
 }
+
+function galleryAnnouncementRedirect(
+  request: NextRequest,
+  result: 'done' | 'failed' | 'unauthorized',
+  counts?: GalleryAnnouncementBatchResult,
+) {
+  const url = new URL('/dashboard', request.url);
+  url.searchParams.set('announcement', result);
+  if (counts) {
+    url.searchParams.set('sent', String(counts.sent));
+    url.searchParams.set('failed', String(counts.failed));
+  }
+  return NextResponse.redirect(url, 303);
+}
+
+function galleryAnnouncementErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message.slice(0, 500);
+  return 'Gallery announcement delivery failed';
+}
+
+async function recordGalleryAnnouncementFailure(
+  householdId: string,
+  error: unknown,
+  releaseClaim: boolean,
+): Promise<void> {
+  await sql`
+    UPDATE households
+    SET gallery_announcement_failed_count = gallery_announcement_failed_count + 1,
+        gallery_announcement_last_failed_at = now(),
+        gallery_announcement_last_error = ${galleryAnnouncementErrorMessage(error)},
+        gallery_announcement_sending_at = CASE
+          WHEN ${releaseClaim} THEN NULL
+          ELSE gallery_announcement_sending_at
+        END
+    WHERE id = ${householdId}
+      AND gallery_announcement_sent_at IS NULL
+  `;
+}
+
+async function sendGalleryAnnouncements(): Promise<GalleryAnnouncementBatchResult> {
+  const rows = (await sql`
+    WITH claimed AS (
+      UPDATE households h
+      SET gallery_announcement_sending_at = now()
+      WHERE h.gallery_announcement_sent_at IS NULL
+        AND (
+          h.gallery_announcement_sending_at IS NULL
+          OR h.gallery_announcement_sending_at < now() - (${GALLERY_ANNOUNCEMENT_CLAIM_TTL_SECONDS} * INTERVAL '1 second')
+        )
+        AND NULLIF(BTRIM(h.contact_email), '') IS NOT NULL
+        AND EXISTS (
+          SELECT 1
+          FROM household_members eligible_member
+          WHERE eligible_member.household_id = h.id
+            AND (eligible_member.attending_day1 IS TRUE OR eligible_member.attending_day2 IS TRUE)
+        )
+      RETURNING h.id, h.label, h.contact_email, h.gallery_announcement_sent_at, h.gallery_announcement_sending_at
+    )
+    SELECT
+      c.id,
+      c.label,
+      c.contact_email,
+      c.gallery_announcement_sent_at,
+      c.gallery_announcement_sending_at,
+      COALESCE(json_agg(json_build_object(
+        'full_name', m.full_name,
+        'attending_day1', m.attending_day1,
+        'attending_day2', m.attending_day2
+      ) ORDER BY m.sort_order, m.created_at) FILTER (WHERE m.id IS NOT NULL), '[]'::json) AS members
+    FROM claimed c
+    LEFT JOIN household_members m ON m.household_id = c.id
+    GROUP BY c.id
+    ORDER BY COALESCE(c.label, c.contact_email)
+  `) as GalleryAnnouncementRow[];
+
+  const recipients = rows.filter((row) => !row.gallery_announcement_sent_at && isGalleryAnnouncementEligible(row));
+  if (recipients.length === 0) return { sent: 0, failed: 0 };
+
+  let galleryCapability: IssuedGalleryCapability;
+  try {
+    galleryCapability = await createGalleryCapability();
+  } catch (error) {
+    for (const recipient of recipients) {
+      await recordGalleryAnnouncementFailure(String(recipient.id), error, true);
+    }
+    throw error;
+  }
+
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? 'https://alannah-rob.ie').replace(/\/$/, '');
+  const galleryUrl = `${baseUrl}/gallery?token=${encodeURIComponent(galleryCapability.token)}`;
+  const resend = new Resend(process.env.RESEND_API_KEY);
+
+  return runThrottledBatch({
+    items: recipients,
+    intervalMs: GALLERY_ANNOUNCEMENT_INTERVAL_MS,
+    runItem: async (recipient) => {
+      const householdId = String(recipient.id);
+      let uploadCapability: IssuedUploadPortalCapability | undefined;
+      let providerAccepted = false;
+
+      try {
+        uploadCapability = await createUploadPortalCapability(householdId, false);
+        const uploadUrl = `${baseUrl}/upload?token=${encodeURIComponent(uploadCapability.token)}`;
+        const sendResult = await resend.emails.send(
+          {
+            from: 'Alannah & Rob <hello@alannah-rob.ie>',
+            to: String(recipient.contact_email).trim(),
+            subject: buildGalleryAnnouncementSubject(),
+            html: buildGalleryAnnouncementEmailHtml(galleryAnnouncementDisplayName(recipient), galleryUrl, uploadUrl),
+          },
+          { idempotencyKey: `gallery-announcement:${householdId}` },
+        );
+        if (sendResult.error || !sendResult.data?.id) {
+          throw new Error(sendResult.error?.message ?? 'Resend did not return a message id');
+        }
+        providerAccepted = true;
+
+        const recorded = await sql`
+          UPDATE households
+          SET gallery_announcement_sent_at = now(),
+              gallery_announcement_sending_at = NULL,
+              gallery_announcement_last_error = NULL
+          WHERE id = ${householdId}
+            AND gallery_announcement_sent_at IS NULL
+          RETURNING id
+        `;
+        if (recorded.length === 0) {
+          throw new Error('Gallery announcement result could not be recorded');
+        }
+      } catch (error) {
+        await recordGalleryAnnouncementFailure(householdId, error, !providerAccepted);
+        throw error;
+      }
+    },
+  });
+}
+
 
 function isModerationAssetKey(value: FormDataEntryValue | null): value is string {
   return typeof value === 'string' && /^[A-Za-z0-9_-]{16,256}$/.test(value);
@@ -155,6 +312,9 @@ export async function GET(request: NextRequest) {
     SELECT
       h.id, h.label, h.contact_email, h.address_line_one, h.evening_invite, h.is_paper_invite, h.invited_at,
       h.invite_failed_count, h.reminder_count, h.reminder_failed_count,
+      h.gallery_announcement_sent_at, h.gallery_announcement_sending_at,
+      h.gallery_announcement_failed_count,
+      h.gallery_announcement_last_failed_at, h.gallery_announcement_last_error,
       hr.song, hr.message, hr.submitted_at,
       COALESCE(ho.open_count, 0) AS open_count,
       ho.first_opened_at,
@@ -217,6 +377,19 @@ export async function POST(request: NextRequest) {
 
   if (!adminSecret) {
     return NextResponse.redirect(new URL('/dashboard?error=missing_admin_secret', request.url));
+  }
+
+  if (action === 'send_gallery_announcements') {
+    if (!hasAdminAuth(request)) return galleryAnnouncementRedirect(request, 'unauthorized');
+    if (!isSameOriginRequest(request)) return galleryAnnouncementRedirect(request, 'unauthorized');
+    if (!csrfValid) return galleryAnnouncementRedirect(request, 'unauthorized');
+
+    try {
+      const result = await sendGalleryAnnouncements();
+      return galleryAnnouncementRedirect(request, 'done', result);
+    } catch {
+      return galleryAnnouncementRedirect(request, 'failed');
+    }
   }
 
   if (action === 'publish_gallery_asset' || action === 'reject_gallery_asset' || action === 'remove_gallery_asset') {

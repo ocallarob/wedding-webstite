@@ -117,19 +117,26 @@ Behavior:
   2. one best match only (paper invite households only)
   3. continue into normal `/rsvp?token=...` flow
 
+
+- `/gallery?token=...`
+  Unlisted event gallery link. The dashboard sends a distinct Gallery announcement with this link and the household-scoped Upload portal link.
+
+- `/gallery-announcement-preview`
+  HTML-only preview of the Gallery announcement; it never sends email.
 - `/upload?token=...`
   Household-scoped Upload portal entry. The capability is generated, resent, and revoked from the admin dashboard.
 
-- `/dashboard`  
+- `/dashboard`
   Admin dashboard with:
   - guest-level summary counts
   - household table
   - send status
   - RSVP open tracking
   - household Upload portal controls
+  - manual, throttled Gallery announcement action with sent and retryable failed status
 
-Invitation and RSVP reminder email sending is disabled. The dashboard has no
-invite, reminder, or invite-resend controls; preview routes render HTML only.
+Invitation and RSVP reminder email sending is disabled. The Gallery announcement is
+the separate post-wedding message; the preview route renders HTML only.
 
 Admin APIs:
 - `GET /api/dashboard` (`x-admin-secret` header auth)

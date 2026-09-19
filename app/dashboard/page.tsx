@@ -7,6 +7,7 @@ import { createCsrfToken } from '../../src/lib/csrf';
 import { createGallerySignedUrl } from '../../src/lib/galleryStorage';
 import { checkRateLimit } from '../../src/lib/rateLimit';
 import { GALLERY_URL_RATE_LIMIT } from '../../src/lib/galleryConfig';
+import { isGalleryAnnouncementEligible } from '../../src/lib/galleryAnnouncement';
 
 export const dynamic = 'force-dynamic';
 const MODERATION_PAGE_SIZE = 50;
@@ -32,6 +33,11 @@ type Row = {
   last_invite_error: string | null;
   reminder_count: number;
   reminder_failed_count: number;
+  gallery_announcement_sent_at: string | null;
+  gallery_announcement_sending_at: string | null;
+  gallery_announcement_failed_count: number;
+  gallery_announcement_last_failed_at: string | null;
+  gallery_announcement_last_error: string | null;
   open_count: number;
   first_opened_at: string | null;
   last_opened_at: string | null;
@@ -177,6 +183,9 @@ type Props = {
     upload_token?: string;
     moderation?: string;
     moderation_page?: string;
+    announcement?: string;
+    sent?: string;
+    failed?: string;
   }>;
 };
 
@@ -187,6 +196,9 @@ export default async function DashboardPage({ searchParams }: Props) {
     upload_token: uploadToken,
     moderation,
     moderation_page: moderationPageParam,
+    announcement,
+    sent: announcementSentParam,
+    failed: announcementFailedParam,
   } = await searchParams;
   const cookieStore = await cookies();
   const adminSession = cookieStore.get('admin_session')?.value;
@@ -239,6 +251,11 @@ export default async function DashboardPage({ searchParams }: Props) {
       h.last_invite_error,
       h.reminder_count,
       h.reminder_failed_count,
+      h.gallery_announcement_sent_at,
+      h.gallery_announcement_sending_at,
+      h.gallery_announcement_failed_count,
+      h.gallery_announcement_last_failed_at,
+      h.gallery_announcement_last_error,
       COALESCE(ho.open_count, 0) AS open_count,
       ho.first_opened_at,
       ho.last_opened_at,
@@ -370,6 +387,20 @@ export default async function DashboardPage({ searchParams }: Props) {
     (sum, r) => sum + ((r.invited_at || r.is_paper_invite) && !r.submitted_at ? r.members.length : 0),
     0
   );
+  const galleryEligibleHouseholds = rows.filter(isGalleryAnnouncementEligible);
+  const galleryAnnouncementSentCount = galleryEligibleHouseholds.filter((row) => row.gallery_announcement_sent_at).length;
+  const galleryAnnouncementFailedCount = galleryEligibleHouseholds.filter(
+    (row) => !row.gallery_announcement_sent_at && row.gallery_announcement_failed_count > 0,
+  ).length;
+  const parsedAnnouncementSent = Number.parseInt(announcementSentParam ?? '', 10);
+  const parsedAnnouncementFailed = Number.parseInt(announcementFailedParam ?? '', 10);
+  const announcementSentCount = Number.isInteger(parsedAnnouncementSent) && parsedAnnouncementSent >= 0
+    ? Math.min(parsedAnnouncementSent, rows.length)
+    : 0;
+  const announcementFailedCount = Number.isInteger(parsedAnnouncementFailed) && parsedAnnouncementFailed >= 0
+    ? Math.min(parsedAnnouncementFailed, rows.length)
+    : 0;
+
 
   const uploadPortalLink = uploadToken
     ? `${(process.env.NEXT_PUBLIC_BASE_URL ?? 'https://alannah-rob.ie').replace(/\/$/, '')}/upload?token=${encodeURIComponent(uploadToken)}`
@@ -393,6 +424,45 @@ export default async function DashboardPage({ searchParams }: Props) {
           Invitation and reminder email sending is disabled.
         </p>
       )}
+
+      {announcement === 'done' && (
+        <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-charcoal" role="status">
+          Gallery announcement batch complete: {announcementSentCount} sent, {announcementFailedCount} failed. Failed households remain retryable.
+        </p>
+      )}
+      {announcement === 'failed' && (
+        <p className="rounded-xl border border-red-200 bg-red-50/80 px-4 py-3 text-center text-sm text-red-700" role="alert">
+          Gallery announcement batch could not be started. No messages were sent.
+        </p>
+      )}
+      {announcement === 'unauthorized' && (
+        <p className="rounded-xl border border-red-200 bg-red-50/80 px-4 py-3 text-center text-sm text-red-700" role="alert">
+          Gallery announcement action was not authorized.
+        </p>
+      )}
+
+      <section className="space-y-4 rounded-2xl border border-stone bg-white/60 p-5 sm:p-6" aria-labelledby="gallery-announcement-heading">
+        <header>
+          <h2 id="gallery-announcement-heading" className="font-heading text-3xl font-light text-charcoal">Gallery announcement</h2>
+          <p className="mt-1 text-sm text-muted">
+            Send the post-wedding message manually to {galleryEligibleHouseholds.length} eligible household{galleryEligibleHouseholds.length === 1 ? '' : 's'}.
+            Successful sends are skipped on later runs; failed sends remain retryable.
+          </p>
+        </header>
+        <div className="flex flex-wrap items-center gap-4 text-sm">
+          <a href="/gallery-announcement-preview" className="text-mauve underline-offset-4 hover:text-charcoal hover:underline">Preview announcement</a>
+          <form action="/api/dashboard" method="POST">
+            <input type="hidden" name="action" value="send_gallery_announcements" />
+            <input type="hidden" name="csrf_token" value={csrfToken} />
+            <button type="submit" disabled={galleryEligibleHouseholds.length === 0} className="btn btn-primary disabled:cursor-not-allowed disabled:opacity-50">
+              Send Gallery announcements
+            </button>
+          </form>
+        </div>
+        <p className="text-xs text-muted">
+          Durable status: {galleryAnnouncementSentCount} sent, {galleryAnnouncementFailedCount} failed and retryable.
+        </p>
+      </section>
 
       {upload === 'done' && uploadPortalLink && (
         <div className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-charcoal">
