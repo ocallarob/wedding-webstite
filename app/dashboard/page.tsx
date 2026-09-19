@@ -1,7 +1,6 @@
 import { sql } from '../../src/lib/db';
 import { site } from '../../src/content/site';
 import { DashboardTable } from './DashboardTable';
-import { SendInitialInvitesButton } from './SendInitialInvitesButton';
 import { cookies } from 'next/headers';
 import { verifyAdminSessionToken } from '../../src/lib/adminSession';
 import { createCsrfToken } from '../../src/lib/csrf';
@@ -42,17 +41,13 @@ type Row = {
 type Props = {
   searchParams: Promise<{
     error?: string;
-    reminder?: string;
-    resend?: string;
-    sent?: string;
-    failed?: string;
     upload?: string;
     upload_token?: string;
   }>;
 };
 
 export default async function DashboardPage({ searchParams }: Props) {
-  const { error, reminder, resend, sent, failed, upload, upload_token: uploadToken } = await searchParams;
+  const { error, upload, upload_token: uploadToken } = await searchParams;
   const cookieStore = await cookies();
   const adminSession = cookieStore.get('admin_session')?.value;
   const adminSecret = process.env.ADMIN_SECRET;
@@ -159,12 +154,6 @@ export default async function DashboardPage({ searchParams }: Props) {
         <p className="text-xs uppercase tracking-[0.2em] text-muted">Dashboard</p>
         <h1 className="font-heading text-4xl font-semibold text-charcoal">{site.coupleNames}</h1>
         <div className="flex items-center justify-center gap-4 pt-1">
-          <SendInitialInvitesButton />
-          <form action="/api/dashboard" method="POST">
-            <input type="hidden" name="action" value="send_reminders" />
-            <input type="hidden" name="csrf_token" value={csrfToken} />
-            <button type="submit" className="text-xs text-mauve underline-offset-4 hover:underline hover:text-charcoal transition-colors">Send reminder batch</button>
-          </form>
           <form action="/api/dashboard" method="POST">
             <input type="hidden" name="action" value="logout" />
             <input type="hidden" name="csrf_token" value={csrfToken} />
@@ -172,11 +161,12 @@ export default async function DashboardPage({ searchParams }: Props) {
           </form>
         </div>
       </header>
+      {error === 'invite_sending_disabled' && (
+        <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-muted">
+          Invitation and reminder email sending is disabled.
+        </p>
+      )}
 
-      {reminder === 'done' && <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-charcoal">Reminder batch complete: sent {sent ?? '0'}, failed {failed ?? '0'}.</p>}
-      {reminder === 'none' && <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-muted">No households currently need a reminder.</p>}
-      {resend === 'done' && <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-charcoal">Invite resend complete.</p>}
-      {resend === 'failed' && <p className="rounded-xl border border-red-200 bg-red-50/80 px-4 py-3 text-center text-sm text-red-700">Invite resend failed. See row send error for details.</p>}
       {upload === 'done' && uploadPortalLink && (
         <div className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-charcoal">
           <p>Upload portal link ready.</p>

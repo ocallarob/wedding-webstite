@@ -203,16 +203,6 @@ export function DashboardTable({ rows, csrfToken }: { rows: Row[]; csrfToken: st
                   {row.last_invite_error ? (
                     <p className="mt-1 text-red-700 break-words">{row.last_invite_error}</p>
                   ) : null}
-                  {!row.is_paper_invite && row.contact_email ? (
-                    <form action="/api/dashboard" method="POST" className="mt-2">
-                      <input type="hidden" name="action" value="resend_invite" />
-                      <input type="hidden" name="csrf_token" value={csrfToken} />
-                      <input type="hidden" name="household_id" value={row.id} />
-                      <button type="submit" className="text-[11px] text-mauve underline-offset-4 hover:underline hover:text-charcoal transition-colors">
-                        Resend invite
-                      </button>
-                    </form>
-                  ) : null}
                 </td>
                 <td className="px-4 py-3 text-xs text-muted min-w-[240px]">
                   <p>{row.upload_portal_expires_at ? `Active until ${formatDateTime(row.upload_portal_expires_at)}` : 'Not generated'}</p>
