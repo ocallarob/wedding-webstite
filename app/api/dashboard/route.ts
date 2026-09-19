@@ -124,7 +124,7 @@ async function sendGalleryAnnouncements(): Promise<GalleryAnnouncementBatchResul
       ) ORDER BY m.sort_order, m.created_at) FILTER (WHERE m.id IS NOT NULL), '[]'::json) AS members
     FROM claimed c
     LEFT JOIN household_members m ON m.household_id = c.id
-    GROUP BY c.id
+    GROUP BY c.id, c.label, c.contact_email, c.gallery_announcement_sent_at, c.gallery_announcement_sending_at
     ORDER BY COALESCE(c.label, c.contact_email)
   `) as GalleryAnnouncementRow[];
 
