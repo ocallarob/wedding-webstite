@@ -27,11 +27,14 @@ RESEND_API_KEY=...
 ADMIN_SECRET=...
 NEXT_PUBLIC_BASE_URL=https://alannah-rob.ie
 PAPER_RSVP_CODE=your-shared-paper-invite-code
+BLOB_READ_WRITE_TOKEN=...
 ```
 
 Notes:
 - `ADMIN_SECRET` is used for dashboard login and admin API actions.
 - `NEXT_PUBLIC_BASE_URL` is used in email RSVP links.
+- `BLOB_READ_WRITE_TOKEN` authenticates private Vercel Blob signed-URL issuance. On Vercel, a connected private store may use `BLOB_STORE_ID` with the platform-managed `VERCEL_OIDC_TOKEN` instead.
+- The event gallery never serves Blob bytes through the application; `gallery_assets.storage_key` is signed into short-lived private URLs only.
 - `PAPER_RSVP_CODE` gates the paper-invite lookup page (`/rsvp/paper?code=...`).
 - For real recipients, keep `NEXT_PUBLIC_BASE_URL` on your branded domain (not preview/tunnel).
 

@@ -94,6 +94,51 @@ async function migrate() {
     ON api_rate_limits (window_start)
   `;
 
+  await sql`
+    CREATE TABLE IF NOT EXISTS gallery_capabilities (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      token_hash   TEXT NOT NULL UNIQUE,
+      expires_at   TIMESTAMPTZ NOT NULL,
+      revoked_at   TIMESTAMPTZ
+    )
+  `;
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS gallery_capabilities_active_idx
+    ON gallery_capabilities (expires_at)
+    WHERE revoked_at IS NULL
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS gallery_assets (
+      id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      public_key          TEXT NOT NULL UNIQUE,
+      household_id        UUID REFERENCES households(id) ON DELETE SET NULL,
+      storage_key         TEXT NOT NULL UNIQUE,
+      media_type          TEXT NOT NULL CHECK (media_type IN ('photo', 'video')),
+      content_type        TEXT NOT NULL,
+      size_bytes          BIGINT NOT NULL CHECK (size_bytes >= 0),
+      display_name        TEXT NOT NULL,
+      moderation_status   TEXT NOT NULL DEFAULT 'pending'
+        CHECK (moderation_status IN ('pending', 'published', 'rejected', 'removed')),
+      created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+      published_at        TIMESTAMPTZ,
+      rejected_at         TIMESTAMPTZ,
+      removed_at          TIMESTAMPTZ,
+      cleanup_error       TEXT
+    )
+  `;
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS gallery_assets_viewer_idx
+    ON gallery_assets (moderation_status, created_at DESC)
+  `;
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS gallery_assets_household_idx
+    ON gallery_assets (household_id, created_at DESC)
+  `;
+
   console.log('Migration complete');
 }
 
