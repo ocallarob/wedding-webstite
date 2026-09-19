@@ -143,14 +143,13 @@ export function GalleryClient({ token }: { token: string }) {
               )}
               {preview.status === 'ready' && asset.media_type === 'video' && (
                 <video
+                  src={preview.url}
                   controls
                   preload="metadata"
                   className="max-h-[28rem] w-full"
                   aria-label={asset.display_name}
                   onError={() => setPreviews((current) => ({ ...current, [asset.asset_key]: { status: 'unsupported' } }))}
-                >
-                  <source src={preview.url} type={asset.content_type} />
-                </video>
+                />
               )}
               {preview.status === 'unsupported' && asset.media_type === 'video' && (
                 <p role="alert" className="p-4 text-center text-sm text-muted">
