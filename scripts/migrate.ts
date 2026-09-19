@@ -120,6 +120,9 @@ async function migrate() {
     )
   `;
 
+  await sql`ALTER TABLE upload_portal_capabilities ADD COLUMN IF NOT EXISTS upload_visit_started_at TIMESTAMPTZ`;
+  await sql`ALTER TABLE upload_portal_capabilities ADD COLUMN IF NOT EXISTS upload_visit_asset_count INTEGER NOT NULL DEFAULT 0`;
+
   await sql`
     CREATE INDEX IF NOT EXISTS upload_portal_capabilities_active_idx
     ON upload_portal_capabilities (household_id, expires_at)
@@ -134,7 +137,6 @@ async function migrate() {
       capability_token_hash  TEXT NOT NULL,
       asset_count            INTEGER NOT NULL CHECK (asset_count > 0),
       issued_count           INTEGER NOT NULL DEFAULT 0 CHECK (issued_count >= 0),
-      completed_count        INTEGER NOT NULL DEFAULT 0 CHECK (completed_count >= 0),
       expires_at              TIMESTAMPTZ NOT NULL,
       created_at              TIMESTAMPTZ NOT NULL DEFAULT now()
     )

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { createAdminSessionToken } from '../src/lib/adminSession';
 import { createCsrfToken } from '../src/lib/csrf';
+import { UPLOAD_MAX_ASSET_BYTES } from '../src/lib/galleryConfig';
 
 const mocks = vi.hoisted(() => ({
   sql: vi.fn(),
@@ -249,7 +250,7 @@ describe('Upload portal boundary', () => {
     expect(response.headers.get('location')).toContain('error=unauthorized');
   });
 
-  it('creates a bounded upload session without exposing household details', async () => {
+  it('creates a bounded upload session without requiring attendance details', async () => {
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
     mocks.sql
       .mockResolvedValueOnce([{
@@ -258,6 +259,7 @@ describe('Upload portal boundary', () => {
         revoked_at: null,
         contact_available: true,
       }])
+      .mockResolvedValueOnce([{}])
       .mockResolvedValueOnce([{ id: '550e8400-e29b-41d4-a716-446655440000', expires_at: expiresAt }]);
 
     const response = await postUpload(uploadRequest(validToken, {
@@ -284,6 +286,18 @@ describe('Upload portal boundary', () => {
     expect(response.status).toBe(400);
     expect(body.error).toBe('Some selected assets are invalid');
     expect(body.errors).toEqual([{ index: 0, message: expect.stringContaining('not supported') }]);
+    expect(mocks.sql).not.toHaveBeenCalled();
+  });
+
+  it('rejects an oversized asset before creating storage work', async () => {
+    const response = await postUpload(uploadRequest(validToken, {
+      action: 'initiate',
+      assets: [{ name: 'large.jpg', content_type: 'image/jpeg', size_bytes: UPLOAD_MAX_ASSET_BYTES + 1 }],
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.errors[0].message).toContain('100 MB or smaller');
     expect(mocks.sql).not.toHaveBeenCalled();
   });
 
@@ -329,11 +343,10 @@ describe('Upload portal boundary', () => {
     expect(await response.json()).toEqual({ type: 'blob.generate-client-token', clientToken: 'client-token' });
   });
 
-  it('records a completed private upload as a Pending submission for its session household', async () => {
+  it('records a completed asset transfer as a Pending submission for its session household', async () => {
     mocks.sql
       .mockResolvedValueOnce([{ household_id: 'household-a', expires_at: new Date(Date.now() + 60_000).toISOString() }])
-      .mockResolvedValueOnce([{ id: 'asset-a' }])
-      .mockResolvedValueOnce([]);
+      .mockResolvedValueOnce([{ id: 'asset-a' }]);
     mocks.head.mockResolvedValue({
       pathname: 'guest-submissions/550e8400-e29b-41d4-a716-446655440000/ceremony-abc.jpg',
       contentType: 'image/jpeg',
@@ -365,7 +378,7 @@ describe('Upload portal boundary', () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ type: 'blob.upload-completed', response: 'ok' });
     expect(mocks.head).toHaveBeenCalledWith('guest-submissions/550e8400-e29b-41d4-a716-446655440000/ceremony-abc.jpg');
-    expect(mocks.sql).toHaveBeenCalledTimes(3);
+    expect(mocks.sql).toHaveBeenCalledTimes(2);
   });
 
   it('confirms a direct upload only for the authorized session and returns awaiting review', async () => {
@@ -379,8 +392,7 @@ describe('Upload portal boundary', () => {
       }])
       .mockResolvedValueOnce([{ household_id: 'household-a' }])
       .mockResolvedValueOnce([{ household_id: 'household-a' }])
-      .mockResolvedValueOnce([{ id: 'asset-a' }])
-      .mockResolvedValueOnce([]);
+      .mockResolvedValueOnce([{ id: 'asset-a' }]);
     mocks.head.mockResolvedValue({
       pathname: 'guest-submissions/550e8400-e29b-41d4-a716-446655440000/ceremony-abc.jpg',
       contentType: 'image/jpeg',
@@ -403,6 +415,95 @@ describe('Upload portal boundary', () => {
     expect(response.status).toBe(201);
     expect(await response.json()).toEqual({ status: 'pending', awaiting_review: true });
   });
+  it('rejects confirmation when the session belongs to a different household', async () => {
+    mocks.sql
+      .mockResolvedValueOnce([{
+        household_id: 'household-b',
+        expires_at: new Date(Date.now() + 60_000).toISOString(),
+        revoked_at: null,
+        contact_available: true,
+      }])
+      .mockResolvedValueOnce([]);
+
+    const response = await postUpload(uploadRequest(validToken, {
+      action: 'confirm',
+      session_id: '550e8400-e29b-41d4-a716-446655440000',
+      pathname: 'guest-submissions/550e8400-e29b-41d4-a716-446655440000/ceremony-abc.jpg',
+      display_name: 'ceremony.jpg',
+      content_type: 'image/jpeg',
+      size_bytes: 2048,
+    }));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'This upload visit is no longer available.' });
+    expect(mocks.head).not.toHaveBeenCalled();
+  });
+
+  it('caps repeated initiation requests within one Upload portal visit', async () => {
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const assets = Array.from({ length: 20 }, (_, index) => ({
+      name: `photo-${index}.jpg`,
+      content_type: 'image/jpeg',
+      size_bytes: 2048,
+    }));
+    mocks.sql
+      .mockResolvedValueOnce([{
+        household_id: 'household-a',
+        expires_at: expiresAt,
+        revoked_at: null,
+        contact_available: true,
+      }])
+      .mockResolvedValueOnce([{ upload_visit_asset_count: 20 }])
+      .mockResolvedValueOnce([{ id: '550e8400-e29b-41d4-a716-446655440000', expires_at: expiresAt }])
+      .mockResolvedValueOnce([{
+        household_id: 'household-a',
+        expires_at: expiresAt,
+        revoked_at: null,
+        contact_available: true,
+      }])
+      .mockResolvedValueOnce([]);
+
+    const firstResponse = await postUpload(uploadRequest(validToken, { action: 'initiate', assets }));
+    const secondResponse = await postUpload(uploadRequest(validToken, {
+      action: 'initiate',
+      assets: [{ name: 'extra.jpg', content_type: 'image/jpeg', size_bytes: 2048 }],
+    }));
+
+    expect(firstResponse.status).toBe(201);
+    expect(secondResponse.status).toBe(400);
+    expect(await secondResponse.json()).toEqual({
+      error: 'You can contribute up to 20 assets per visit. Start a new visit later.',
+    });
+    expect(mocks.sql).toHaveBeenCalledTimes(5);
+  });
+
+  it('rejects a completion callback when its upload visit is inactive', async () => {
+    mocks.sql.mockResolvedValueOnce([]);
+    mocks.del.mockResolvedValue(undefined);
+    mocks.handleUpload.mockImplementation(async ({ body, onUploadCompleted }: { body: { payload: unknown }; onUploadCompleted: Function }) => {
+      await onUploadCompleted(body.payload);
+      return { type: 'blob.upload-completed', response: 'ok' };
+    });
+
+    const response = await postUpload(uploadRequest(validToken, {
+      type: 'blob.upload-completed',
+      payload: {
+        blob: { pathname: 'guest-submissions/550e8400-e29b-41d4-a716-446655440000/photo.jpg' },
+        tokenPayload: JSON.stringify({
+          session_id: '550e8400-e29b-41d4-a716-446655440000',
+          pathname: 'guest-submissions/550e8400-e29b-41d4-a716-446655440000/photo.jpg',
+          display_name: 'photo.jpg',
+          content_type: 'image/jpeg',
+          size_bytes: 2048,
+        }),
+      },
+    }));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'This upload visit is no longer available.' });
+    expect(mocks.del).toHaveBeenCalledWith('guest-submissions/550e8400-e29b-41d4-a716-446655440000/photo.jpg');
+  });
+
 
   it('rejects a visit that exceeds the configured asset-count limit before storage work', async () => {
     const response = await postUpload(uploadRequest(validToken, {

@@ -98,31 +98,26 @@ export function UploadPortalClient({ token }: { token: string }) {
     updateAsset(asset.id, { status: 'uploading', progress: 0, error: undefined });
     const pathname = `guest-submissions/${sessionId}/${crypto.randomUUID()}-${safeUploadName(asset.file.name)}`;
 
+    const metadata = {
+      session_id: sessionId,
+      display_name: asset.file.name,
+      content_type: asset.file.type,
+      size_bytes: asset.file.size,
+    };
+
     try {
       const blob = await upload(pathname, asset.file, {
         access: 'private',
         handleUploadUrl: `/api/upload?token=${encodeURIComponent(token)}`,
         contentType: asset.file.type,
         multipart: asset.file.size > 10 * 1024 * 1024,
-        clientPayload: JSON.stringify({
-          session_id: sessionId,
-          display_name: asset.file.name,
-          content_type: asset.file.type,
-          size_bytes: asset.file.size,
-        }),
+        clientPayload: JSON.stringify(metadata),
         onUploadProgress: ({ percentage }) => updateAsset(asset.id, { progress: Math.round(percentage) }),
       });
       const confirmation = await fetch(`/api/upload?token=${encodeURIComponent(token)}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          action: 'confirm',
-          session_id: sessionId,
-          pathname: blob.pathname,
-          display_name: asset.file.name,
-          content_type: asset.file.type,
-          size_bytes: asset.file.size,
-        }),
+        body: JSON.stringify({ action: 'confirm', pathname: blob.pathname, ...metadata }),
       });
       const confirmationBody = (await confirmation.json().catch(() => ({}))) as { awaiting_review?: boolean };
       if (!confirmation.ok || confirmationBody.awaiting_review !== true) throw new Error('Upload confirmation failed');
@@ -132,7 +127,7 @@ export function UploadPortalClient({ token }: { token: string }) {
       updateAsset(asset.id, {
         status: 'error',
         progress: 0,
-        error: 'This asset could not be uploaded. Try it again.',
+        error: "We couldn't upload this asset. Try it again.",
       });
       return false;
     }
@@ -171,7 +166,7 @@ export function UploadPortalClient({ token }: { token: string }) {
             const asset = pendingAssets[index];
             if (asset) updateAsset(asset.id, { status: 'error', error: message });
           });
-          setNotice('Some selected assets need attention before they can be contributed.');
+          setNotice('Some selected assets need attention before you can contribute them.');
         } else {
           setNotice(body.error ?? 'The Upload portal is temporarily unavailable. Try again shortly.');
         }
@@ -182,11 +177,19 @@ export function UploadPortalClient({ token }: { token: string }) {
       const uploadedCount = results.filter(Boolean).length;
       const failedCount = results.length - uploadedCount;
       if (failedCount === 0) {
-        setNotice(`${uploadedCount} ${uploadedCount === 1 ? 'contribution is' : 'contributions are'} uploaded and awaiting review.`);
+        setNotice(
+          uploadedCount === 1
+            ? 'We received one contribution; it awaits review.'
+            : `We received ${uploadedCount} contributions; they await review.`,
+        );
       } else if (uploadedCount > 0) {
-        setNotice(`${uploadedCount} ${uploadedCount === 1 ? 'contribution is' : 'contributions are'} uploaded and awaiting review. ${failedCount} still need${failedCount === 1 ? 's' : ''} attention.`);
+        setNotice(
+          uploadedCount === 1
+            ? `We received one contribution; it awaits review. ${failedCount} asset still needs attention.`
+            : `We received ${uploadedCount} contributions; they await review. ${failedCount} assets still need attention.`,
+        );
       } else {
-        setNotice('No contributions were uploaded. Try the failed assets again.');
+        setNotice("We couldn't upload any contributions. Try the failed assets again.");
       }
     } catch {
       setNotice('The Upload portal is temporarily unavailable. Try again shortly.');
@@ -197,7 +200,7 @@ export function UploadPortalClient({ token }: { token: string }) {
 
   if (status === 'loading') {
     return (
-      <p role="status" aria-live="polite" className="rounded-2xl border border-stone bg-white/80 p-8 text-center text-sm text-muted">
+      <p role="status" aria-live="polite" className="rounded-2xl border border-stone bg-ivory/80 p-8 text-center text-sm text-muted">
         Checking the Upload portal link…
       </p>
     );
@@ -205,7 +208,7 @@ export function UploadPortalClient({ token }: { token: string }) {
 
   if (status === 'expired') {
     return (
-      <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50/80 p-8 text-center text-sm text-amber-800">
+      <div role="alert" className="rounded-2xl border border-stone bg-ivory/80 p-8 text-center text-sm text-mauve">
         <p className="font-medium">This Upload portal link has expired.</p>
         <p className="mt-2">Ask the couple to generate a new link.</p>
       </div>
@@ -214,7 +217,7 @@ export function UploadPortalClient({ token }: { token: string }) {
 
   if (status === 'invalid') {
     return (
-      <div role="alert" className="rounded-2xl border border-red-200 bg-red-50/80 p-8 text-center text-sm text-red-700">
+      <div role="alert" className="rounded-2xl border border-stone bg-ivory/80 p-8 text-center text-sm text-mauve">
         <p className="font-medium">This Upload portal link is invalid or revoked.</p>
         <p className="mt-2">Ask the couple to generate a current link.</p>
       </div>
@@ -223,7 +226,7 @@ export function UploadPortalClient({ token }: { token: string }) {
 
   if (status === 'rate_limited') {
     return (
-      <p role="alert" className="rounded-2xl border border-amber-200 bg-amber-50/80 p-8 text-center text-sm text-amber-800">
+      <p role="alert" className="rounded-2xl border border-stone bg-ivory/80 p-8 text-center text-sm text-mauve">
         Too many checks in a short time. Wait a moment and try the link again.
       </p>
     );
@@ -231,7 +234,7 @@ export function UploadPortalClient({ token }: { token: string }) {
 
   if (status === 'error') {
     return (
-      <p role="alert" className="rounded-2xl border border-red-200 bg-red-50/80 p-8 text-center text-sm text-red-700">
+      <p role="alert" className="rounded-2xl border border-stone bg-ivory/80 p-8 text-center text-sm text-mauve">
         The Upload portal is temporarily unavailable. Try again shortly.
       </p>
     );
@@ -248,15 +251,15 @@ export function UploadPortalClient({ token }: { token: string }) {
           multiple
           onChange={chooseAssets}
           disabled={submitting}
-          className="block w-full rounded-xl border border-stone bg-white/80 px-3 py-3 text-sm text-charcoal file:mr-3 file:rounded-lg file:border-0 file:bg-mauve file:px-3 file:py-2 file:text-xs file:text-white"
+          className="block w-full rounded-xl border border-stone bg-ivory/80 px-3 py-3 text-sm text-charcoal file:mr-3 file:rounded-lg file:border-0 file:bg-mauve file:px-3 file:py-2 file:text-xs file:text-ivory"
         />
-        <p className="text-xs leading-5 text-muted">Select up to {UPLOAD_MAX_ASSETS_PER_VISIT} assets. Each one transfers directly to private storage and is reviewed before publication.</p>
+        <p className="text-xs leading-5 text-muted">Select up to {UPLOAD_MAX_ASSETS_PER_VISIT} assets. Each one transfers directly to private storage; we review every contribution before publication.</p>
       </div>
 
       {assets.length > 0 && (
         <ul className="space-y-3" aria-label="Selected assets">
           {assets.map((asset) => (
-            <li key={asset.id} className="rounded-xl border border-stone bg-white/70 px-4 py-3 text-sm">
+            <li key={asset.id} className="rounded-xl border border-stone bg-ivory/70 px-4 py-3 text-sm">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <p className="truncate font-medium text-charcoal">{asset.file.name}</p>
@@ -272,18 +275,18 @@ export function UploadPortalClient({ token }: { token: string }) {
               {asset.status === 'uploading' && (
                 <progress className="mt-3 h-2 w-full accent-mauve" value={asset.progress} max="100" aria-label={`Uploading ${asset.file.name}`} />
               )}
-              {asset.status === 'error' && <p className="mt-2 text-xs text-red-700" role="alert">{asset.error}</p>}
+              {asset.status === 'error' && <p className="mt-2 text-xs text-mauve" role="alert">{asset.error}</p>}
             </li>
           ))}
         </ul>
       )}
 
-      {notice && <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-charcoal" role="status" aria-live="polite">{notice}</p>}
+      {notice && <p className="rounded-xl border border-stone bg-ivory/80 px-4 py-3 text-center text-sm text-charcoal" role="status" aria-live="polite">{notice}</p>}
 
       <button
         type="submit"
         disabled={submitting || assets.every((asset) => asset.status === 'success') || assets.length === 0}
-        className="w-full rounded-full bg-charcoal px-5 py-3 text-sm text-white transition-colors hover:bg-mauve disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full rounded-full bg-charcoal px-5 py-3 text-sm text-ivory transition-colors hover:bg-mauve disabled:cursor-not-allowed disabled:opacity-50"
       >
         {submitting ? 'Uploading selected assets…' : 'Contribute selected assets'}
       </button>

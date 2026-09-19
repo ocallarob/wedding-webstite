@@ -20,12 +20,13 @@ import { isUploadPathname, validateUploadAsset, type ValidatedUploadAsset } from
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-type UploadClientPayload = {
+type ParsedUploadPayload = {
   sessionId: string;
   asset: ValidatedUploadAsset;
+  pathname: unknown;
 };
 
-type UploadTokenPayload = UploadClientPayload & { pathname: string };
+type UploadTokenPayload = ParsedUploadPayload & { pathname: string };
 
 type BlobUploadBody = {
   type: string;
@@ -59,47 +60,16 @@ function isSessionUploadPathname(pathname: unknown, sessionId: string): pathname
   return isUploadPathname(pathname) && pathname.startsWith(`guest-submissions/${sessionId}/`);
 }
 
-function parseClientPayload(value: unknown): UploadClientPayload {
+function parseUploadPayload(value: unknown, errorMessage: string): ParsedUploadPayload {
   let parsed: unknown;
   try {
     parsed = JSON.parse(typeof value === 'string' ? value : '');
   } catch {
-    throw new UploadRouteError(400, 'Upload metadata is invalid. Select the asset again.');
+    throw new UploadRouteError(400, errorMessage);
   }
 
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    throw new UploadRouteError(400, 'Upload session is invalid. Start a new contribution.');
-  }
-  const payload = parsed as {
-    session_id?: unknown;
-    display_name?: unknown;
-    content_type?: unknown;
-    size_bytes?: unknown;
-  };
-  if (!isSessionId(payload.session_id)) {
-    throw new UploadRouteError(400, 'Upload session is invalid. Start a new contribution.');
-  }
-
-  const validation = validateUploadAsset({
-    displayName: payload.display_name,
-    contentType: payload.content_type,
-    sizeBytes: payload.size_bytes,
-  });
-  if (!validation.ok) throw new UploadRouteError(400, validation.message);
-
-  return { sessionId: payload.session_id, asset: validation.asset };
-}
-
-function parseTokenPayload(value: unknown): UploadTokenPayload {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(typeof value === 'string' ? value : '');
-  } catch {
-    throw new UploadRouteError(400, 'Upload completion metadata is invalid.');
-  }
-
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    throw new UploadRouteError(400, 'Upload completion metadata is invalid.');
+    throw new UploadRouteError(400, errorMessage);
   }
   const payload = parsed as {
     session_id?: unknown;
@@ -109,10 +79,7 @@ function parseTokenPayload(value: unknown): UploadTokenPayload {
     size_bytes?: unknown;
   };
   if (!isSessionId(payload.session_id)) {
-    throw new UploadRouteError(400, 'Upload completion metadata is invalid.');
-  }
-  if (!isSessionUploadPathname(payload.pathname, payload.session_id)) {
-    throw new UploadRouteError(400, 'Upload completion metadata is invalid.');
+    throw new UploadRouteError(400, errorMessage);
   }
 
   const validation = validateUploadAsset({
@@ -123,6 +90,15 @@ function parseTokenPayload(value: unknown): UploadTokenPayload {
   if (!validation.ok) throw new UploadRouteError(400, validation.message);
 
   return { sessionId: payload.session_id, asset: validation.asset, pathname: payload.pathname };
+}
+
+function parseTokenPayload(value: unknown): UploadTokenPayload {
+  const payload = parseUploadPayload(value, 'Upload completion metadata is invalid.');
+  const pathname = payload.pathname;
+  if (!isSessionUploadPathname(pathname, payload.sessionId)) {
+    throw new UploadRouteError(400, 'Upload completion metadata is invalid.');
+  }
+  return { ...payload, pathname };
 }
 
 async function getValidCapability(token: unknown) {
@@ -167,6 +143,36 @@ function parseInitiationAssets(value: unknown): { assets: ValidatedUploadAsset[]
   return { assets, errors };
 }
 
+async function reserveVisitAssetCount(token: string, assetCount: number): Promise<void> {
+  const rows = await sql`
+    UPDATE upload_portal_capabilities
+    SET upload_visit_started_at = CASE
+          WHEN upload_visit_started_at IS NULL
+            OR upload_visit_started_at <= now() - (${UPLOAD_PORTAL_SESSION_TTL_SECONDS} * interval '1 second')
+          THEN now()
+          ELSE upload_visit_started_at
+        END,
+        upload_visit_asset_count = CASE
+          WHEN upload_visit_started_at IS NULL
+            OR upload_visit_started_at <= now() - (${UPLOAD_PORTAL_SESSION_TTL_SECONDS} * interval '1 second')
+          THEN ${assetCount}
+          ELSE upload_visit_asset_count + ${assetCount}
+        END
+    WHERE token_hash = ${hashUploadPortalToken(token)}
+      AND revoked_at IS NULL
+      AND expires_at > now()
+      AND (
+        upload_visit_started_at IS NULL
+        OR upload_visit_started_at <= now() - (${UPLOAD_PORTAL_SESSION_TTL_SECONDS} * interval '1 second')
+        OR upload_visit_asset_count + ${assetCount} <= ${UPLOAD_MAX_ASSETS_PER_VISIT}
+      )
+    RETURNING upload_visit_asset_count
+  `;
+  if (!rows[0]) {
+    throw new UploadRouteError(400, `You can contribute up to ${UPLOAD_MAX_ASSETS_PER_VISIT} assets per visit. Start a new visit later.`);
+  }
+}
+
 async function initiateUpload(request: NextRequest, body: Record<string, unknown>) {
   const parsed = parseInitiationAssets(body.assets);
   if (parsed.errors.length > 0) {
@@ -176,6 +182,7 @@ async function initiateUpload(request: NextRequest, body: Record<string, unknown
   const token = request.nextUrl.searchParams.get('token');
   const capability = await getValidCapability(token);
   await requireRateLimit(`upload-portal:contribution:ip:${requestIp(request)}`, UPLOAD_PORTAL_CONTRIBUTION_RATE_LIMIT, 'Too many upload attempts');
+  await reserveVisitAssetCount(token!, parsed.assets.length);
 
   const expiresAt = new Date(Date.now() + UPLOAD_PORTAL_SESSION_TTL_SECONDS * 1000);
   const rows = await sql`
@@ -222,13 +229,24 @@ async function persistCompletedUpload(payload: UploadTokenPayload, storageKey: s
   }
 
   const sessions = await sql`
-    SELECT household_id
-    FROM gallery_upload_sessions
-    WHERE id = ${payload.sessionId}
+    SELECT s.household_id
+    FROM gallery_upload_sessions s
+    INNER JOIN upload_portal_capabilities up ON up.token_hash = s.capability_token_hash
+    WHERE s.id = ${payload.sessionId}
+      AND s.expires_at > now()
+      AND up.revoked_at IS NULL
+      AND up.expires_at > now()
     LIMIT 1
   `;
   const session = sessions[0];
-  if (!session) throw new UploadRouteError(400, 'This upload visit is no longer available.');
+  if (!session) {
+    try {
+      await del(storageKey);
+    } catch {
+      // Leave the callback safe to retry if storage cleanup is temporarily unavailable.
+    }
+    throw new UploadRouteError(400, 'This upload visit is no longer available.');
+  }
 
   const blobMetadata = await head(storageKey);
   const validation = validateUploadAsset({
@@ -270,13 +288,6 @@ async function persistCompletedUpload(payload: UploadTokenPayload, storageKey: s
     ON CONFLICT (storage_key) DO NOTHING
     RETURNING id
   `;
-  if (inserted.length > 0) {
-    await sql`
-      UPDATE gallery_upload_sessions
-      SET completed_count = completed_count + 1
-      WHERE id = ${payload.sessionId}
-    `;
-  }
   return inserted.length > 0;
 }
 
@@ -310,9 +321,17 @@ async function confirmUpload(request: NextRequest, body: Record<string, unknown>
     WHERE id = ${payload.sessionId}
       AND household_id = ${capability.householdId}
       AND capability_token_hash = ${hashUploadPortalToken(token!)}
+      AND expires_at > now()
     LIMIT 1
   `;
-  if (!sessions[0]) throw new UploadRouteError(400, 'This upload visit is no longer available.');
+  if (!sessions[0]) {
+    try {
+      await del(payload.pathname);
+    } catch {
+      // The provider callback remains safe to retry if cleanup is temporarily unavailable.
+    }
+    throw new UploadRouteError(400, 'This upload visit is no longer available.');
+  }
 
   const inserted = await persistCompletedUpload(payload, payload.pathname);
   return NextResponse.json(
@@ -327,7 +346,10 @@ async function handleBlobUpload(request: NextRequest, body: BlobUploadBody) {
       throw new UploadRouteError(400, 'Upload path is invalid. Select the asset again.');
     }
 
-    const clientPayload = parseClientPayload(payload.clientPayload);
+    const clientPayload = parseUploadPayload(payload.clientPayload, 'Upload metadata is invalid. Select the asset again.');
+    if (!isSessionUploadPathname(payload.pathname, clientPayload.sessionId)) {
+      throw new UploadRouteError(400, 'Upload path is invalid. Select the asset again.');
+    }
     const token = request.nextUrl.searchParams.get('token');
     const capability = await getValidCapability(token);
     await requireRateLimit(`upload-portal:contribution:ip:${requestIp(request)}`, UPLOAD_PORTAL_CONTRIBUTION_RATE_LIMIT, 'Too many upload attempts');

@@ -17,10 +17,10 @@ type Props = {
 function InvalidUploadPortalLink() {
   return (
     <div className="mx-auto max-w-2xl px-5 pb-20 pt-[96px]">
-      <div role="alert" className="rounded-3xl border border-red-200 bg-red-50/80 p-8 text-center">
-        <p className="text-xs uppercase tracking-[0.24em] text-red-700">Upload portal unavailable</p>
+      <div role="alert" className="rounded-3xl border border-stone bg-ivory/80 p-8 text-center">
+        <p className="text-xs uppercase tracking-[0.24em] text-mauve">Upload portal unavailable</p>
         <h1 className="mt-3 font-heading text-4xl font-light text-charcoal">This Upload portal link is not valid</h1>
-        <p className="mt-4 text-sm leading-7 text-red-700">
+        <p className="mt-4 text-sm leading-7 text-mauve">
           Use the current link from the Gallery announcement, or ask the couple to generate a new one.
         </p>
       </div>
@@ -41,7 +41,7 @@ export default async function UploadPage({ searchParams }: Props) {
           <p className="text-xs uppercase tracking-[0.26em] text-mauve">Upload portal</p>
           <h1 className="mt-3 font-heading text-4xl font-light tracking-[0.05em] text-charcoal sm:text-5xl">Share your memories</h1>
           <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-muted">
-            Contribute photographs or videos to the event gallery. Every contribution is reviewed before it appears there.
+            Contribute photographs or videos to the event gallery. We review every contribution before it appears there.
           </p>
         </header>
 
