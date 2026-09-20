@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useGalleryAccessToken } from './GalleryAccess';
 import { useState } from 'react';
 import { DateEasterEgg } from './DateEasterEgg';
 import { Monogram } from '../components/Monogram';
@@ -18,8 +19,12 @@ const navItems = [
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const hideHeader = pathname === '/save-the-date';
+  const galleryToken = useGalleryAccessToken();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const visibleNavItems = galleryToken
+    ? [...navItems, { href: `/gallery?token=${encodeURIComponent(galleryToken)}`, label: 'Gallery' }]
+    : navItems;
+  const hideHeader = pathname === '/save-the-date';
 
   if (hideHeader) return null;
 
@@ -32,37 +37,37 @@ export function SiteHeader() {
     >
       <div className="mx-auto max-w-6xl px-5 py-4">
         <div className="flex items-center">
-        <Link href="/" className="relative z-10 flex items-center gap-3 text-sm uppercase tracking-[0.2em] text-muted">
-          <Monogram />
-          <span className="sr-only">Home</span>
-        </Link>
+          <Link href="/" className="relative z-10 flex items-center gap-3 text-sm uppercase tracking-[0.2em] text-muted">
+            <Monogram />
+            <span className="sr-only">Home</span>
+          </Link>
 
-        <nav className="relative z-20 mx-4 hidden flex-1 items-center justify-center gap-2 text-[10px] uppercase tracking-[0.18em] text-muted sm:flex md:gap-3 md:text-[11px] md:tracking-[0.22em]">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="rounded px-2 py-1 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal/40"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+          <nav className="relative z-20 mx-4 hidden flex-1 items-center justify-center gap-2 text-[10px] uppercase tracking-[0.18em] text-muted sm:flex md:gap-3 md:text-[11px] md:tracking-[0.22em]">
+            {visibleNavItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="rounded px-2 py-1 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal/40"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
 
-        <div className="relative z-10 hidden font-heading italic text-xl leading-none tracking-[0.18em] text-muted lg:block">
-          <DateEasterEgg defaultText={site.date} targetDate={site.countdownDateTime} className="inline" />
-        </div>
+          <div className="relative z-10 hidden font-heading italic text-xl leading-none tracking-[0.18em] text-muted lg:block">
+            <DateEasterEgg defaultText={site.date} targetDate={site.countdownDateTime} className="inline" />
+          </div>
 
-        <button
-          type="button"
-          onClick={() => setMobileOpen((prev) => !prev)}
-          className="ml-auto inline-flex items-center rounded border border-stone/80 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted sm:hidden"
-          aria-expanded={mobileOpen}
-          aria-controls="mobile-nav-menu"
-          aria-label="Toggle navigation menu"
-        >
-          Menu
-        </button>
+          <button
+            type="button"
+            onClick={() => setMobileOpen((prev) => !prev)}
+            className="ml-auto inline-flex items-center rounded border border-stone/80 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted sm:hidden"
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-nav-menu"
+            aria-label="Toggle navigation menu"
+          >
+            Menu
+          </button>
         </div>
 
         {mobileOpen && (
@@ -70,7 +75,7 @@ export function SiteHeader() {
             id="mobile-nav-menu"
             className="mt-3 grid gap-1 rounded-xl border border-stone/80 bg-ivory/95 p-2 text-[10px] uppercase tracking-[0.2em] text-muted sm:hidden"
           >
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}

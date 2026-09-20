@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
+import { GalleryAccessReset } from '../../src/components/GalleryAccess';
 import { GalleryClient } from './GalleryClient';
 import { isValidGalleryCapability } from '../../src/lib/galleryCapabilities';
 
@@ -11,9 +12,10 @@ export const metadata: Metadata = {
   },
 };
 
-function InvalidGalleryLink() {
+function InvalidGalleryLink({ token }: { token?: string }) {
   return (
     <div className="mx-auto max-w-2xl px-5 pb-20 pt-[96px]">
+      <GalleryAccessReset token={token} />
       <div className="rounded-3xl border border-red-200 bg-red-50/80 p-8 text-center">
         <p className="text-xs uppercase tracking-[0.24em] text-red-700">Gallery link unavailable</p>
         <h1 className="mt-3 font-heading text-4xl font-light text-charcoal">This Gallery link is not valid</h1>
@@ -33,7 +35,7 @@ export default async function GalleryPage({ searchParams }: Props) {
   const { token } = await searchParams;
 
   if (!token || !(await isValidGalleryCapability(token))) {
-    return <InvalidGalleryLink />;
+    return <InvalidGalleryLink token={token} />;
   }
 
   return (

@@ -12,6 +12,10 @@ _Avoid_: Album, gallery section
 A semi-private link to the event gallery; possession of the link grants viewing access, but the gallery is not publicly listed or identity-restricted.
 _Avoid_: Private gallery, public gallery
 
+**Gallery viewer**:
+A person viewing the event gallery with a currently valid Gallery link. This is link-based access, not an identity or account.
+_Avoid_: Validated user, account
+
 **Asset**:
 One photograph or video belonging to the event gallery.
 _Avoid_: File, upload

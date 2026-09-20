@@ -366,6 +366,7 @@ async function handleBlobUpload(request: NextRequest, body: BlobUploadBody) {
           validUntil: expiresAt.getTime(),
           addRandomSuffix: true,
           allowOverwrite: false,
+          callbackUrl: new URL('/api/upload', request.url).toString(),
           tokenPayload: JSON.stringify({
             session_id: clientPayload.sessionId,
             pathname,

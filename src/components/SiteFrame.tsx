@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { DateEasterEgg } from './DateEasterEgg';
+import { GalleryAccessLink } from './GalleryAccess';
 import { Monogram } from './Monogram';
 import { SiteHeader } from './SiteHeader';
 import { site } from '../content/site';
@@ -44,6 +45,7 @@ export function SiteFrame({ coupleNames, dateText, locationText, children }: Pro
                   {item.label}
                 </Link>
               ))}
+              <GalleryAccessLink className="no-underline hover:text-mauve hover:underline" />
             </nav>
             <div className="text-center text-xs uppercase tracking-[0.25em]">
               <DateEasterEgg defaultText={dateText} targetDate={site.countdownDateTime} className="inline" /> • {locationText}

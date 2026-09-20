@@ -100,6 +100,16 @@ describe('gallery viewer boundary', () => {
     }
     expect(mocks.sql).not.toHaveBeenCalled();
   });
+  it('rejects malformed gallery cursors', async () => {
+    mocks.sql.mockResolvedValueOnce([{ id: 'gallery-capability' }]);
+
+    const response = await listGallery(request(`/api/gallery?token=${galleryToken}&cursor=not-base64`));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'Invalid gallery cursor' });
+    expect(mocks.sql).toHaveBeenCalledTimes(1);
+  });
+
 
   it.each(['expired', 'revoked'])('rejects %s Gallery links', async () => {
     mocks.sql.mockResolvedValueOnce([]);
@@ -145,6 +155,56 @@ describe('gallery viewer boundary', () => {
       expect.objectContaining({ access: 'private', operation: 'get', pathname: 'gallery/published-photo.jpg' }),
     );
   });
+  it('paginates published assets with a stable oldest-first cursor', async () => {
+    const pagedAssets = Array.from({ length: 25 }, (_, index) => ({
+      public_key: `published-photo-${index}`,
+      media_type: 'photo',
+      content_type: 'image/jpeg',
+      size_bytes: '2048',
+      display_name: `Published photo ${index}.jpg`,
+      created_at: new Date(Date.parse('2026-09-19T12:00:00.000Z') + index * 60_000).toISOString(),
+      moderation_status: 'published',
+    }));
+    mocks.sql
+      .mockResolvedValueOnce([{ id: 'gallery-capability' }])
+      .mockResolvedValueOnce(pagedAssets);
+
+    const firstResponse = await listGallery(request(`/api/gallery?token=${galleryToken}`));
+    const firstBody = await firstResponse.json();
+    const firstQuery = mocks.sql.mock.calls[1] as unknown[];
+    const firstQueryText = (firstQuery[0] as TemplateStringsArray).join('');
+
+    expect(firstResponse.status).toBe(200);
+    expect(firstBody.assets).toHaveLength(24);
+    expect(firstBody.next_cursor).toEqual(expect.any(String));
+    expect(firstQueryText).toContain('ORDER BY created_at ASC, public_key ASC');
+    expect(JSON.parse(Buffer.from(firstBody.next_cursor, 'base64url').toString('utf8'))).toEqual({
+      createdAt: pagedAssets[23].created_at,
+      assetKey: 'published-photo-23',
+    });
+
+    vi.clearAllMocks();
+    mocks.checkRateLimit.mockResolvedValue(true);
+    mocks.sql
+      .mockResolvedValueOnce([{ id: 'gallery-capability' }])
+      .mockResolvedValueOnce(pagedAssets.slice(24));
+
+    const secondResponse = await listGallery(
+      request(`/api/gallery?token=${galleryToken}&cursor=${firstBody.next_cursor}`),
+    );
+    const secondBody = await secondResponse.json();
+    const secondQuery = mocks.sql.mock.calls[1] as unknown[];
+    const secondQueryText = (secondQuery[0] as TemplateStringsArray).join('');
+
+    expect(secondResponse.status).toBe(200);
+    expect(secondBody.assets).toHaveLength(1);
+    expect(secondBody.assets[0].asset_key).toBe('published-photo-24');
+    expect(secondBody.next_cursor).toBeNull();
+    expect(secondQueryText).toContain('AND (created_at, public_key) > (');
+    expect(secondQuery).toContain(pagedAssets[23].created_at);
+    expect(secondQuery).toContain('published-photo-23');
+  });
+
 
   it('does not issue a URL for a Pending submission or missing asset', async () => {
     mocks.sql

@@ -353,6 +353,10 @@ describe('Upload portal boundary', () => {
       addRandomSuffix: true,
       allowOverwrite: false,
     });
+    expect(typeof tokenOptions?.callbackUrl).toBe('string');
+    const callbackUrl = new URL(String(tokenOptions?.callbackUrl));
+    expect(callbackUrl.origin).toBe('http://localhost');
+    expect(callbackUrl.pathname).toBe('/api/upload');
     expect(typeof tokenOptions?.tokenPayload).toBe('string');
     expect(JSON.parse(String(tokenOptions?.tokenPayload))).toEqual({
       session_id: '550e8400-e29b-41d4-a716-446655440000',
