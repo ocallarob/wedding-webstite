@@ -21,7 +21,7 @@ function parseTargetDate(input: string): Date | null {
 
 function formatCountdown(target: Date): string {
   const diffMs = target.getTime() - Date.now();
-  if (diffMs <= 0) return 'Today is the day';
+  if (diffMs <= 0) return 'Thank you for the best day';
 
   const totalSeconds = Math.floor(diffMs / 1000);
   const days = Math.floor(totalSeconds / 86400);

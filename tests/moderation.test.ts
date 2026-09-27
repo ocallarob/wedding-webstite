@@ -48,7 +48,7 @@ describe('dashboard moderation boundary', () => {
     mocks.del.mockResolvedValue(undefined);
   });
 
-  it('publishes a pending submission exactly once', async () => {
+  it('publishes a pending asset exactly once', async () => {
     mocks.sql
       .mockResolvedValueOnce([{ id: 'asset-id', storage_key: 'gallery/asset.jpg', moderation_status: 'pending', cleanup_error: null }])
       .mockResolvedValueOnce([{ id: 'asset-id' }]);
@@ -69,7 +69,7 @@ describe('dashboard moderation boundary', () => {
     expect(mocks.sql).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects a pending submission and deletes its private object', async () => {
+  it('rejects a pending asset and deletes its private object', async () => {
     mocks.sql
       .mockResolvedValueOnce([{ id: 'asset-id', storage_key: 'gallery/asset.jpg', moderation_status: 'pending', cleanup_error: null }])
       .mockResolvedValueOnce([{ id: 'asset-id' }]);
@@ -93,7 +93,7 @@ describe('dashboard moderation boundary', () => {
     expect(mocks.sql).toHaveBeenCalledTimes(2);
   });
 
-  it('does not remove a pending submission through the removal action', async () => {
+  it('does not remove a pending asset through the removal action', async () => {
     mocks.sql.mockResolvedValueOnce([{ id: 'asset-id', storage_key: 'gallery/asset.jpg', moderation_status: 'pending', cleanup_error: null }]);
 
     const response = await dashboardPost(request('remove_gallery_asset'));

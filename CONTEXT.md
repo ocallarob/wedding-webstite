@@ -1,6 +1,6 @@
 # Wedding Photo Sharing Context
 
-This context describes the post-wedding collection of photographs and guest-contributed media shared with eligible wedding households.
+This context describes the post-wedding event gallery and the photographs or videos guests send directly to the couple via WhatsApp.
 
 ## Gallery language
 
@@ -18,14 +18,10 @@ _Avoid_: Validated user, account
 
 **Asset**:
 One photograph or video belonging to the event gallery.
-_Avoid_: File, upload
+_Avoid_: File
 
-**Guest submission**:
-An asset contributed by a wedding guest for possible inclusion in the event gallery.
-_Avoid_: Guest asset, public upload
-
-**Pending submission**:
-A guest submission awaiting review and not yet visible in the event gallery.
+**Pending asset**:
+An event-gallery asset awaiting review and not yet visible in the event gallery.
 _Avoid_: Hidden photo
 
 **Published asset**:
@@ -36,12 +32,9 @@ _Avoid_: Approved upload
 A viewer downloads one published asset at a time, typically its original file. The event gallery does not provide multi-select or bulk downloads.
 _Avoid_: Bulk download, download all
 
-**Upload portal**:
-The guest-facing place where a person who controls a household's listed contact email contributes photographs or videos to the event gallery. Upload access does not require that the household attended; moderation decides whether a submission is published.
-_Avoid_: Upload page, submission form
 
 **Gallery announcement**:
-The post-wedding message that tells eligible households the event gallery is available. It is distinct from an invitation or RSVP reminder.
+The post-wedding message that tells eligible households the event gallery is available and explains how to send photographs or videos to the couple via WhatsApp. It is distinct from an invitation or RSVP reminder.
 _Avoid_: Invite, reminder
 
 **Household**:

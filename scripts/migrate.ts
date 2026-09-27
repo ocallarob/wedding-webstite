@@ -6,6 +6,8 @@ async function migrate() {
   // Full cutover: legacy model is no longer used.
   await sql`DROP TABLE IF EXISTS rsvps`;
   await sql`DROP TABLE IF EXISTS guests`;
+  await sql`DROP TABLE IF EXISTS gallery_upload_sessions`;
+  await sql`DROP TABLE IF EXISTS upload_portal_capabilities`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS households (
@@ -119,43 +121,6 @@ async function migrate() {
     WHERE revoked_at IS NULL
   `;
 
-  await sql`
-    CREATE TABLE IF NOT EXISTS upload_portal_capabilities (
-      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      household_id  UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
-      token_hash    TEXT NOT NULL UNIQUE,
-      expires_at    TIMESTAMPTZ NOT NULL,
-      revoked_at    TIMESTAMPTZ,
-      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
-    )
-  `;
-
-  await sql`ALTER TABLE upload_portal_capabilities ADD COLUMN IF NOT EXISTS upload_visit_started_at TIMESTAMPTZ`;
-  await sql`ALTER TABLE upload_portal_capabilities ADD COLUMN IF NOT EXISTS upload_visit_asset_count INTEGER NOT NULL DEFAULT 0`;
-
-  await sql`
-    CREATE INDEX IF NOT EXISTS upload_portal_capabilities_active_idx
-    ON upload_portal_capabilities (household_id, expires_at)
-    WHERE revoked_at IS NULL
-  `;
-
-
-  await sql`
-    CREATE TABLE IF NOT EXISTS gallery_upload_sessions (
-      id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      household_id           UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
-      capability_token_hash  TEXT NOT NULL,
-      asset_count            INTEGER NOT NULL CHECK (asset_count > 0),
-      issued_count           INTEGER NOT NULL DEFAULT 0 CHECK (issued_count >= 0),
-      expires_at              TIMESTAMPTZ NOT NULL,
-      created_at              TIMESTAMPTZ NOT NULL DEFAULT now()
-    )
-  `;
-
-  await sql`
-    CREATE INDEX IF NOT EXISTS gallery_upload_sessions_active_idx
-    ON gallery_upload_sessions (household_id, expires_at)
-  `;
   await sql`
     CREATE TABLE IF NOT EXISTS gallery_assets (
       id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),

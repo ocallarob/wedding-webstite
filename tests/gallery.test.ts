@@ -206,7 +206,7 @@ describe('gallery viewer boundary', () => {
   });
 
 
-  it('does not issue a URL for a Pending submission or missing asset', async () => {
+  it('does not issue a URL for a pending asset or missing asset', async () => {
     mocks.sql
       .mockResolvedValueOnce([{ id: 'gallery-capability' }])
       .mockResolvedValueOnce([]);

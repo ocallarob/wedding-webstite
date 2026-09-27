@@ -7,7 +7,7 @@ export default function GalleryAnnouncementPreviewPage() {
   const html = buildGalleryAnnouncementEmailHtml(
     'Anne & Brian',
     `${baseUrl}/gallery?token=example-gallery-token`,
-    `${baseUrl}/upload?token=example-upload-token`,
+    baseUrl,
   );
 
   return (
@@ -16,7 +16,7 @@ export default function GalleryAnnouncementPreviewPage() {
         <span>Gallery announcement preview — no email will be sent</span>
         <a href="/dashboard" className="text-mauve underline">Back to dashboard</a>
       </div>
-      <iframe title="Gallery announcement preview" srcDoc={html} className="mx-auto block h-[860px] w-full max-w-[680px] rounded-md border border-stone bg-white" />
+      <iframe title="Gallery announcement preview" srcDoc={html} className="mx-auto block h-[1150px] w-full max-w-[680px] rounded-md border border-stone bg-white" />
     </main>
   );
 }

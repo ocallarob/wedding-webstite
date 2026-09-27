@@ -2,24 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { del } from '@vercel/blob';
 import { Resend } from 'resend';
 import { sql } from '../../../src/lib/db';
-import { checkRateLimit } from '../../../src/lib/rateLimit';
-import { UPLOAD_PORTAL_RESEND_RATE_LIMIT, GALLERY_ANNOUNCEMENT_INTERVAL_MS, GALLERY_ANNOUNCEMENT_CLAIM_TTL_SECONDS } from '../../../src/lib/galleryConfig';
+import { GALLERY_ANNOUNCEMENT_INTERVAL_MS, GALLERY_ANNOUNCEMENT_CLAIM_TTL_SECONDS } from '../../../src/lib/galleryConfig';
 import { ADMIN_COOKIE_NAME, hasAdminAuth, isSameOriginRequest } from '../../../src/lib/adminAuth';
 import { createAdminSessionToken, SESSION_TTL_SECONDS } from '../../../src/lib/adminSession';
 import { verifyCsrfToken } from '../../../src/lib/csrf';
-import { buildUploadPortalEmailHtml } from '../../../src/lib/uploadPortalEmailHtml';
 import { buildGalleryAnnouncementEmailHtml, buildGalleryAnnouncementSubject } from '../../../src/lib/galleryAnnouncementEmailHtml';
 import { createGalleryCapability } from '../../../src/lib/galleryCapabilities';
 import type { IssuedGalleryCapability } from '../../../src/lib/galleryCapabilities';
 import { isGalleryAnnouncementEligible, galleryAnnouncementDisplayName } from '../../../src/lib/galleryAnnouncement';
 import { runThrottledBatch } from '../../../src/lib/throttledBatch';
-import {
-  createUploadPortalCapability,
-  revokeOtherUploadPortalCapabilities,
-  revokeUploadPortalCapability,
-  revokeUploadPortalCapabilities,
-} from '../../../src/lib/uploadPortalCapabilities';
-import type { IssuedUploadPortalCapability } from '../../../src/lib/uploadPortalCapabilities';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -150,18 +141,14 @@ async function sendGalleryAnnouncements(): Promise<GalleryAnnouncementBatchResul
     intervalMs: GALLERY_ANNOUNCEMENT_INTERVAL_MS,
     runItem: async (recipient) => {
       const householdId = String(recipient.id);
-      let uploadCapability: IssuedUploadPortalCapability | undefined;
       let providerAccepted = false;
-
       try {
-        uploadCapability = await createUploadPortalCapability(householdId, false);
-        const uploadUrl = `${baseUrl}/upload?token=${encodeURIComponent(uploadCapability.token)}`;
         const sendResult = await resend.emails.send(
           {
             from: 'Alannah & Rob <hello@alannah-rob.ie>',
             to: String(recipient.contact_email).trim(),
             subject: buildGalleryAnnouncementSubject(),
-            html: buildGalleryAnnouncementEmailHtml(galleryAnnouncementDisplayName(recipient), galleryUrl, uploadUrl),
+            html: buildGalleryAnnouncementEmailHtml(galleryAnnouncementDisplayName(recipient), galleryUrl, baseUrl),
           },
           { idempotencyKey: `gallery-announcement:${householdId}` },
         );
@@ -408,80 +395,6 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  if (action === 'generate_upload_portal' || action === 'resend_upload_portal' || action === 'revoke_upload_portal') {
-    if (!hasAdminAuth(request)) return NextResponse.redirect(new URL('/dashboard?error=unauthorized', request.url));
-    if (!isSameOriginRequest(request)) return NextResponse.redirect(new URL('/dashboard?error=unauthorized', request.url));
-    if (!csrfValid) return NextResponse.redirect(new URL('/dashboard?error=unauthorized', request.url));
-
-    const householdId = String(formData.get('household_id') ?? '').trim();
-    if (!householdId) return NextResponse.redirect(new URL('/dashboard?upload=failed', request.url));
-
-    try {
-      if (action === 'resend_upload_portal') {
-        const allowed = await checkRateLimit(
-          `upload-portal:resend:household:${householdId}`,
-          UPLOAD_PORTAL_RESEND_RATE_LIMIT,
-        );
-        if (!allowed) return NextResponse.redirect(new URL('/dashboard?upload=failed', request.url));
-      }
-      if (action === 'revoke_upload_portal') {
-        await revokeUploadPortalCapabilities(householdId);
-        return NextResponse.redirect(new URL('/dashboard?upload=revoked', request.url));
-      }
-
-      if (action === 'resend_upload_portal') {
-        const rows = await sql`
-          SELECT contact_email
-          FROM households
-          WHERE id = ${householdId}
-            AND NULLIF(BTRIM(contact_email), '') IS NOT NULL
-          LIMIT 1
-        `;
-        const household = rows[0];
-        if (!household) return NextResponse.redirect(new URL('/dashboard?upload=failed', request.url));
-
-        let capability: IssuedUploadPortalCapability | undefined;
-        try {
-          capability = await createUploadPortalCapability(householdId, false);
-          const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? 'https://alannah-rob.ie').replace(/\/$/, '');
-          const uploadUrl = `${baseUrl}/upload?token=${encodeURIComponent(capability.token)}`;
-          const resend = new Resend(process.env.RESEND_API_KEY);
-          const sendResult = await resend.emails.send({
-            from: 'Alannah & Rob <hello@alannah-rob.ie>',
-            to: String(household.contact_email).trim(),
-            subject: 'Your Alannah & Rob Upload portal',
-            html: buildUploadPortalEmailHtml(uploadUrl),
-          });
-          if (sendResult.error || !sendResult.data?.id) {
-            throw new Error(sendResult.error?.message ?? 'Resend did not return a message id');
-          }
-        } catch {
-          if (capability) {
-            try {
-              await revokeUploadPortalCapability(householdId, capability.token);
-            } catch {
-              // Keep the existing capability usable if cleanup is temporarily unavailable.
-            }
-          }
-          return NextResponse.redirect(new URL('/dashboard?upload=failed', request.url));
-        }
-
-        try {
-          await revokeOtherUploadPortalCapabilities(householdId, capability.token);
-        } catch {
-          // A delivered capability remains usable if stale-token cleanup is temporarily unavailable.
-        }
-        return NextResponse.redirect(new URL('/dashboard?upload=sent', request.url));
-      }
-
-      const capability = await createUploadPortalCapability(householdId);
-      return NextResponse.redirect(
-        new URL(`/dashboard?upload=done&upload_token=${encodeURIComponent(capability.token)}`, request.url),
-      );
-    } catch {
-      return NextResponse.redirect(new URL('/dashboard?upload=failed', request.url));
-    }
-  }
 
   const password = formData.get('password');
   const nextPath = String(formData.get('next') ?? '/dashboard');

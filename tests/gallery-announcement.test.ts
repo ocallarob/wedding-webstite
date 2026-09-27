@@ -2,24 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { createAdminSessionToken } from '../src/lib/adminSession';
 import { createCsrfToken } from '../src/lib/csrf';
+import { buildInviteEmailSubject } from '../src/lib/inviteEmailHtml';
 
 const mocks = vi.hoisted(() => ({
   sql: vi.fn(),
   sendEmail: vi.fn(),
   createGalleryCapability: vi.fn(),
-  createUploadPortalCapability: vi.fn(),
-  revokeOtherUploadPortalCapabilities: vi.fn(),
-  revokeUploadPortalCapability: vi.fn(),
 }));
 
 vi.mock('../src/lib/db', () => ({ sql: mocks.sql }));
 vi.mock('../src/lib/galleryCapabilities', () => ({ createGalleryCapability: mocks.createGalleryCapability }));
-vi.mock('../src/lib/uploadPortalCapabilities', () => ({
-  createUploadPortalCapability: mocks.createUploadPortalCapability,
-  revokeOtherUploadPortalCapabilities: mocks.revokeOtherUploadPortalCapabilities,
-  revokeUploadPortalCapability: mocks.revokeUploadPortalCapability,
-  revokeUploadPortalCapabilities: vi.fn(),
-}));
 vi.mock('../src/lib/throttledBatch', () => ({
   runThrottledBatch: async ({ items, runItem }: { items: unknown[]; runItem: (item: unknown) => Promise<void> }) => {
     let sent = 0;
@@ -86,12 +78,6 @@ beforeEach(() => {
   process.env.ADMIN_SECRET = adminSecret;
   mocks.sql.mockResolvedValue([]);
   mocks.createGalleryCapability.mockResolvedValue({ token: 'gallery-token', expiresAt });
-  mocks.createUploadPortalCapability.mockResolvedValue({
-    token: `up_${'a'.repeat(43)}`,
-    expiresAt,
-  });
-  mocks.revokeOtherUploadPortalCapabilities.mockResolvedValue(undefined);
-  mocks.revokeUploadPortalCapability.mockResolvedValue(undefined);
   mocks.sendEmail.mockResolvedValue({ data: { id: 'message-id' }, error: null });
 });
 
@@ -111,9 +97,11 @@ describe('Gallery announcement boundary', () => {
     expect(location.searchParams.get('sent')).toBe('1');
     expect(location.searchParams.get('failed')).toBe('0');
     expect(send.to).toBe('anne@example.com');
-    expect(send.subject).toContain('gallery');
+    expect(send.subject).not.toBe(buildInviteEmailSubject());
     expect(send.html).toContain('gallery?token=gallery-token');
-    expect(send.html).toContain(`upload?token=up_${'a'.repeat(43)}`);
+    expect(send.html).toContain('WhatsApp');
+    expect(send.html).not.toContain('mailto:');
+    expect(send.html).not.toContain('hello@alannah-rob.ie');
     expect(send.html).not.toContain('household-a');
     expect(mocks.sendEmail.mock.calls[0]?.[1]).toEqual({
       idempotencyKey: 'gallery-announcement:household-a',
@@ -186,8 +174,6 @@ describe('Gallery announcement boundary', () => {
       'anne@example.com',
       'second@example.com',
     ]);
-    expect(mocks.revokeUploadPortalCapability).not.toHaveBeenCalled();
-    expect(mocks.revokeOtherUploadPortalCapabilities).not.toHaveBeenCalled();
     expect(mocks.sql.mock.calls[1].slice(1)).toEqual(expect.arrayContaining(['household-a', 'provider unavailable', true]));
   });
 
@@ -202,7 +188,6 @@ describe('Gallery announcement boundary', () => {
     expect(location.searchParams.get('sent')).toBe('0');
     expect(location.searchParams.get('failed')).toBe('1');
     expect(mocks.sendEmail).toHaveBeenCalledTimes(1);
-    expect(mocks.revokeUploadPortalCapability).not.toHaveBeenCalled();
     expect(mocks.sql.mock.calls[2].slice(1)).toEqual(expect.arrayContaining([
       'household-a',
       'Gallery announcement result could not be recorded',

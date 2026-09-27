@@ -45,7 +45,6 @@ type Row = {
   message: string | null;
   submitted_at: string | null;
   members: Member[];
-  upload_portal_expires_at: string | null;
 };
 
 type ModerationRow = {
@@ -179,8 +178,6 @@ function ModerationAssetCard({ asset, csrfToken }: { asset: ModerationAsset; csr
 type Props = {
   searchParams: Promise<{
     error?: string;
-    upload?: string;
-    upload_token?: string;
     moderation?: string;
     moderation_page?: string;
     announcement?: string;
@@ -192,8 +189,6 @@ type Props = {
 export default async function DashboardPage({ searchParams }: Props) {
   const {
     error,
-    upload,
-    upload_token: uploadToken,
     moderation,
     moderation_page: moderationPageParam,
     announcement,
@@ -262,13 +257,6 @@ export default async function DashboardPage({ searchParams }: Props) {
       hr.song,
       hr.message,
       hr.submitted_at,
-      (
-        SELECT MAX(up.expires_at)
-        FROM upload_portal_capabilities up
-        WHERE up.household_id = h.id
-          AND up.revoked_at IS NULL
-          AND up.expires_at > now()
-      ) AS upload_portal_expires_at,
       COALESCE(json_agg(json_build_object(
         'full_name', m.full_name,
         'member_type', m.member_type,
@@ -402,9 +390,6 @@ export default async function DashboardPage({ searchParams }: Props) {
     : 0;
 
 
-  const uploadPortalLink = uploadToken
-    ? `${(process.env.NEXT_PUBLIC_BASE_URL ?? 'https://alannah-rob.ie').replace(/\/$/, '')}/upload?token=${encodeURIComponent(uploadToken)}`
-    : null;
 
   return (
     <div className="mx-auto max-w-6xl px-5 pt-[72px] pb-20 space-y-10">
@@ -464,29 +449,20 @@ export default async function DashboardPage({ searchParams }: Props) {
         </p>
       </section>
 
-      {upload === 'done' && uploadPortalLink && (
-        <div className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-charcoal">
-          <p>Upload portal link ready.</p>
-          <a href={uploadPortalLink} className="mt-1 inline-block break-all text-mauve hover:text-charcoal">{uploadPortalLink}</a>
-        </div>
-      )}
-      {upload === 'failed' && <p className="rounded-xl border border-red-200 bg-red-50/80 px-4 py-3 text-center text-sm text-red-700">Upload portal link could not be changed.</p>}
-      {upload === 'revoked' && <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-charcoal">Upload portal link revoked.</p>}
-      {upload === 'sent' && <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-charcoal">Upload portal link sent to the household contact.</p>}
 
       {moderation === 'published' && (
         <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-charcoal" role="status">
-          Submission published and now visible through the event gallery.
+          Gallery asset published and now visible through the event gallery.
         </p>
       )}
       {moderation === 'already_published' && (
         <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-charcoal" role="status">
-          That submission was already published.
+          That gallery asset was already published.
         </p>
       )}
       {moderation === 'rejected' || moderation === 'already_rejected' ? (
         <p className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-charcoal" role="status">
-          Pending submission rejected and kept out of the event gallery.
+          Pending gallery asset rejected and kept out of the event gallery.
         </p>
       ) : null}
       {moderation === 'removed' || moderation === 'already_removed' ? (
@@ -505,10 +481,10 @@ export default async function DashboardPage({ searchParams }: Props) {
         </p>
       )}
 
-      <section className="space-y-5 rounded-2xl border border-stone bg-white/60 p-5 sm:p-6" aria-labelledby="pending-submissions-heading">
+      <section className="space-y-5 rounded-2xl border border-stone bg-white/60 p-5 sm:p-6" aria-labelledby="pending-gallery-assets-heading">
         <header>
-          <h2 id="pending-submissions-heading" className="font-heading text-3xl font-light text-charcoal">Pending submissions</h2>
-          <p className="mt-1 text-sm text-muted">Review each guest submission. Pending submissions are not visible through the event gallery.</p>
+          <h2 id="pending-gallery-assets-heading" className="font-heading text-3xl font-light text-charcoal">Pending gallery assets</h2>
+          <p className="mt-1 text-sm text-muted">Review media received for the gallery. Pending assets are not visible through the event gallery.</p>
         </header>
         {pendingAssets.length > 0 ? (
           <div className="grid gap-5 lg:grid-cols-2">
@@ -516,7 +492,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           </div>
         ) : (
           <p className="rounded-xl border border-stone/80 bg-ivory/70 px-4 py-8 text-center text-sm text-muted" role="status">
-            No submissions are waiting for review.
+            No gallery assets are waiting for review.
           </p>
         )}
       </section>
@@ -580,7 +556,7 @@ export default async function DashboardPage({ searchParams }: Props) {
         ))}
       </div>
 
-      <DashboardTable rows={rows} csrfToken={csrfToken} />
+      <DashboardTable rows={rows} />
     </div>
   );
 }

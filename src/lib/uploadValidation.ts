@@ -53,8 +53,3 @@ export function validateUploadAsset(input: {
     },
   };
 }
-
-export function isUploadPathname(pathname: unknown): pathname is string {
-  return typeof pathname === 'string'
-    && /^guest-submissions\/[A-Za-z0-9_-]{16,80}\/[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/.test(pathname);
-}

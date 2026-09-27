@@ -46,7 +46,6 @@ Current model (no legacy guest/partner dependency):
 - `household_rsvps`
 - `household_rsvp_opens`
 - `gallery_capabilities`
-- `upload_portal_capabilities`
 - `gallery_assets`
 
 Run schema migration:
@@ -119,12 +118,10 @@ Behavior:
 
 
 - `/gallery?token=...`
-  Unlisted event gallery link. The dashboard sends a distinct Gallery announcement with this link and the household-scoped Upload portal link.
+  Unlisted event gallery link. The dashboard sends a distinct Gallery announcement with this link and asks recipients to send photographs or videos to one of us on WhatsApp.
 
 - `/gallery-announcement-preview`
   HTML-only preview of the Gallery announcement; it never sends email.
-- `/upload?token=...`
-  Household-scoped Upload portal entry. The capability is generated, resent, and revoked from the admin dashboard.
 
 - `/dashboard`
   Admin dashboard with:
@@ -132,7 +129,6 @@ Behavior:
   - household table
   - send status
   - RSVP open tracking
-  - household Upload portal controls
   - manual, throttled Gallery announcement action with sent and retryable failed status
 
 Invitation and RSVP reminder email sending is disabled. The Gallery announcement is
