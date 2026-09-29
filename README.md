@@ -27,11 +27,14 @@ RESEND_API_KEY=...
 ADMIN_SECRET=...
 NEXT_PUBLIC_BASE_URL=https://alannah-rob.ie
 PAPER_RSVP_CODE=your-shared-paper-invite-code
+BLOB_READ_WRITE_TOKEN=...
 ```
 
 Notes:
 - `ADMIN_SECRET` is used for dashboard login and admin API actions.
 - `NEXT_PUBLIC_BASE_URL` is used in email RSVP links.
+- `BLOB_READ_WRITE_TOKEN` authenticates private Vercel Blob signed-URL issuance. On Vercel, a connected private store may use `BLOB_STORE_ID` with the platform-managed `VERCEL_OIDC_TOKEN` instead.
+- The event gallery never serves Blob bytes through the application; `gallery_assets.storage_key` is signed into short-lived private URLs only.
 - `PAPER_RSVP_CODE` gates the paper-invite lookup page (`/rsvp/paper?code=...`).
 - For real recipients, keep `NEXT_PUBLIC_BASE_URL` on your branded domain (not preview/tunnel).
 
@@ -42,6 +45,8 @@ Current model (no legacy guest/partner dependency):
 - `household_members`
 - `household_rsvps`
 - `household_rsvp_opens`
+- `gallery_capabilities`
+- `gallery_assets`
 
 Run schema migration:
 
@@ -111,31 +116,26 @@ Behavior:
   2. one best match only (paper invite households only)
   3. continue into normal `/rsvp?token=...` flow
 
-- `/dashboard`  
+
+- `/gallery?token=...`
+  Unlisted event gallery link. The dashboard sends a distinct Gallery announcement with this link and asks recipients to send photographs or videos to one of us on WhatsApp.
+
+- `/gallery-announcement-preview`
+  HTML-only preview of the Gallery announcement; it never sends email.
+
+- `/dashboard`
   Admin dashboard with:
   - guest-level summary counts
   - household table
   - send status
   - RSVP open tracking
-  - one-click reminder batch
+  - manual, throttled Gallery announcement action with sent and retryable failed status
+
+Invitation and RSVP reminder email sending is disabled. The Gallery announcement is
+the separate post-wedding message; the preview route renders HTML only.
 
 Admin APIs:
-- `POST /api/invites/send` (send new invites)
-- `POST /api/dashboard` with `action=send_reminders` (reminders)
-- `POST /api/reminders/test` (send one test reminder without updating counters)
 - `GET /api/dashboard` (`x-admin-secret` header auth)
-
-Send a test reminder:
-
-```bash
-curl -X POST http://localhost:3000/api/reminders/test \
-  -H "Content-Type: application/json" \
-  -H "x-admin-secret: $ADMIN_SECRET" \
-  -d '{"to":"you@example.com","displayName":"Test Guest"}'
-```
-
-Optional JSON fields are `eveningInvite` (boolean) and `rsvpToken` (string). If no
-token is supplied, the email uses a clearly non-production example RSVP token.
 
 ## Email + Deliverability Notes
 

@@ -14,10 +14,12 @@
     "db:seed": "tsx --env-file=.env.local scripts/seed.ts",
     "db:import-households": "tsx --env-file=.env.local scripts/import-households.ts",
     "db:append-households": "tsx --env-file=.env.local scripts/import-households.ts private/households-append.csv --apply --insert-only",
-    "db:update-household-addresses": "tsx --env-file=.env.local scripts/update-household-addresses.ts private/households-append.csv --apply"
+    "db:update-household-addresses": "tsx --env-file=.env.local scripts/update-household-addresses.ts private/households-append.csv --apply",
+    "gallery:upload": "tsx --env-file=.env.local scripts/upload-gallery-assets.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
+    "@vercel/blob": "^2.8.0",
     "next": "^14.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

@@ -4,6 +4,7 @@ import { site } from '../src/content/site';
 import { Monogram } from '../src/components/Monogram';
 import { DateEasterEgg } from '../src/components/DateEasterEgg';
 import { IrishPhrase } from '../src/components/IrishPhrase';
+import { GalleryAccessLink } from '../src/components/GalleryAccess';
 
 const quickInfo = [
   { label: 'Date', value: site.dateText },
@@ -310,6 +311,7 @@ export default function HomePage() {
                 {item.label}
               </Link>
             ))}
+            <GalleryAccessLink className="no-underline hover:text-mauve hover:underline" />
           </nav>
           <div className="flex justify-center">
             <Image
@@ -339,6 +341,7 @@ function HomeHeroNav() {
           {item.label}
         </Link>
       ))}
+      <GalleryAccessLink className="px-1 py-1 no-underline transition-colors hover:text-mauve" />
     </nav>
   );
 }
@@ -359,6 +362,7 @@ function MobileHomeMenu() {
             {item.label}
           </Link>
         ))}
+        <GalleryAccessLink className="block rounded px-2 py-2 text-center text-[10px] uppercase tracking-[0.22em] text-muted no-underline hover:bg-mauve/10 hover:text-mauve" />
       </nav>
     </details>
   );

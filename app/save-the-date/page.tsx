@@ -20,7 +20,7 @@ export default function SaveTheDatePage() {
 
     const formatCountdown = (target: Date) => {
       const diffMs = target.getTime() - Date.now();
-      if (diffMs <= 0) return 'Today is the day';
+      if (diffMs <= 0) return 'Thank you for the best day';
 
       const totalSeconds = Math.floor(diffMs / 1000);
       const days = Math.floor(totalSeconds / (60 * 60 * 24));
