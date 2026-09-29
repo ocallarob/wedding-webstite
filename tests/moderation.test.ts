@@ -18,12 +18,13 @@ const assetKey = 'asset-key-1234567890';
 
 function request(
   action: string,
-  options: { csrf?: string; cookie?: string; origin?: string; assetKey?: string } = {},
+  options: { csrf?: string; cookie?: string; origin?: string; assetKey?: string; householdId?: string } = {},
 ): NextRequest {
   const session = createAdminSessionToken(adminSecret);
   const form = new URLSearchParams({
     action,
     asset_key: options.assetKey ?? assetKey,
+    household_id: options.householdId ?? '',
     csrf_token: options.csrf ?? createCsrfToken(session, adminSecret),
   });
   return new NextRequest('http://localhost/api/dashboard', {
@@ -153,6 +154,61 @@ describe('dashboard moderation boundary', () => {
     const response = await dashboardPost(request('publish_gallery_asset', { assetKey: 'bad' }));
 
     expect(location(response)).toBe('invalid_asset');
+    expect(mocks.sql).not.toHaveBeenCalled();
+  });
+  it('rotates one household Gallery link and returns the replacement outside the URL', async () => {
+    const householdId = '123e4567-e89b-12d3-a456-426614174001';
+    mocks.sql.mockResolvedValueOnce([{ id: 'new-capability-id' }]);
+
+    const response = await dashboardPost(request('rotate_gallery_link', { householdId }));
+    const replacement = new URL((await response.text()).trim());
+    const rotationCall = mocks.sql.mock.calls[0] as unknown[];
+    const rotationQuery = (rotationCall[0] as TemplateStringsArray).join('');
+    const token = replacement.searchParams.get('token') ?? '';
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('location')).toBeNull();
+    expect(response.headers.get('content-type')).toContain('text/plain');
+    expect(response.headers.get('cache-control')).toContain('no-store');
+    expect(replacement.pathname).toBe('/gallery');
+    expect(token).toMatch(/^[A-Za-z0-9_-]{32,256}$/);
+    expect(rotationQuery).not.toContain('FOR UPDATE OF h');
+    expect(rotationQuery).toContain('UPDATE gallery_capabilities');
+    expect(rotationQuery).toContain('INSERT INTO gallery_capabilities');
+    expect(rotationQuery).toContain('WHERE household_id =');
+    expect(rotationQuery).toContain("NULLIF(BTRIM(h.contact_email), '') IS NOT NULL");
+    expect(rotationQuery).toContain('eligible_member.attending_day1 IS TRUE OR eligible_member.attending_day2 IS TRUE');
+    expect(rotationCall).toContain(householdId);
+    expect(rotationCall).not.toContain(token);
+  });
+
+  it('does not reveal a replacement for a household that is no longer eligible', async () => {
+    mocks.sql.mockResolvedValueOnce([]);
+
+    const response = await dashboardPost(request('rotate_gallery_link', {
+      householdId: '123e4567-e89b-12d3-a456-426614174001',
+    }));
+
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe('Household not found');
+    expect(response.headers.get('location')).toBeNull();
+  });
+
+  it.each([
+    ['missing administrator session', { cookie: '' }],
+    ['cross-origin request', { origin: 'https://attacker.example' }],
+    ['invalid CSRF token', { csrf: 'invalid' }],
+  ])('rejects Gallery-link rotation for %s', async (_label, options) => {
+    const response = await dashboardPost(request('rotate_gallery_link', options));
+
+    expect(response.status).toBe(403);
+    expect(mocks.sql).not.toHaveBeenCalled();
+  });
+
+  it('rejects malformed household IDs before rotating Gallery links', async () => {
+    const response = await dashboardPost(request('rotate_gallery_link', { householdId: 'not-a-uuid' }));
+
+    expect(response.status).toBe(400);
     expect(mocks.sql).not.toHaveBeenCalled();
   });
 });

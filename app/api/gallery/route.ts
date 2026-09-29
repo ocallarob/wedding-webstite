@@ -6,7 +6,8 @@ import {
   isGalleryToken,
   type GalleryMediaType,
 } from '../../../src/lib/galleryConfig';
-import { isValidGalleryCapability } from '../../../src/lib/galleryCapabilities';
+import { getGalleryCapabilityHouseholdId } from '../../../src/lib/galleryCapabilities';
+import { recordGalleryOpen } from '../../../src/lib/galleryActivity';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -59,7 +60,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Cache-Control': 'no-store' } });
   }
 
-  if (!(await isValidGalleryCapability(token))) {
+  const householdId = await getGalleryCapabilityHouseholdId(token);
+  if (!householdId) {
     return NextResponse.json(
       { error: 'Invalid Gallery link' },
       { status: 404, headers: { 'Cache-Control': 'no-store' } },
@@ -125,6 +127,7 @@ export async function GET(request: NextRequest) {
     ? encodeGalleryCursor(lastAsset.created_at_cursor, lastAsset.asset_key)
     : null;
   const responseAssets = pageAssets.map(({ created_at_cursor: _createdAtCursor, ...asset }) => asset);
+  if (!cursor) await recordGalleryOpen(householdId, request.headers.get('x-gallery-session'));
 
   return NextResponse.json(
     { assets: responseAssets, next_cursor: nextCursor },

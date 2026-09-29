@@ -2,13 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { del } from '@vercel/blob';
 import { Resend } from 'resend';
 import { sql } from '../../../src/lib/db';
-import { GALLERY_ANNOUNCEMENT_INTERVAL_MS, GALLERY_ANNOUNCEMENT_CLAIM_TTL_SECONDS } from '../../../src/lib/galleryConfig';
+import { GALLERY_ANNOUNCEMENT_INTERVAL_MS, GALLERY_ANNOUNCEMENT_CLAIM_TTL_SECONDS, isUuid } from '../../../src/lib/galleryConfig';
 import { ADMIN_COOKIE_NAME, hasAdminAuth, isSameOriginRequest } from '../../../src/lib/adminAuth';
 import { createAdminSessionToken, SESSION_TTL_SECONDS } from '../../../src/lib/adminSession';
 import { verifyCsrfToken } from '../../../src/lib/csrf';
 import { buildGalleryAnnouncementEmailHtml, buildGalleryAnnouncementSubject } from '../../../src/lib/galleryAnnouncementEmailHtml';
-import { createGalleryCapability } from '../../../src/lib/galleryCapabilities';
-import type { IssuedGalleryCapability } from '../../../src/lib/galleryCapabilities';
+import { createGalleryCapability, rotateGalleryCapability } from '../../../src/lib/galleryCapabilities';
 import { isGalleryAnnouncementEligible, galleryAnnouncementDisplayName } from '../../../src/lib/galleryAnnouncement';
 import { runThrottledBatch } from '../../../src/lib/throttledBatch';
 
@@ -57,6 +56,18 @@ function galleryAnnouncementRedirect(
     url.searchParams.set('failed', String(counts.failed));
   }
   return NextResponse.redirect(url, 303);
+}
+
+function galleryLinkRotationResponse(body: string, status = 200) {
+  return new NextResponse(body, {
+    status,
+    headers: {
+      'Cache-Control': 'private, no-store',
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Referrer-Policy': 'no-referrer',
+      'X-Content-Type-Options': 'nosniff',
+    },
+  });
 }
 
 function galleryAnnouncementErrorMessage(error: unknown): string {
@@ -122,18 +133,7 @@ async function sendGalleryAnnouncements(): Promise<GalleryAnnouncementBatchResul
   const recipients = rows.filter((row) => !row.gallery_announcement_sent_at && isGalleryAnnouncementEligible(row));
   if (recipients.length === 0) return { sent: 0, failed: 0 };
 
-  let galleryCapability: IssuedGalleryCapability;
-  try {
-    galleryCapability = await createGalleryCapability();
-  } catch (error) {
-    for (const recipient of recipients) {
-      await recordGalleryAnnouncementFailure(String(recipient.id), error, true);
-    }
-    throw error;
-  }
-
   const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? 'https://alannah-rob.ie').replace(/\/$/, '');
-  const galleryUrl = `${baseUrl}/gallery?token=${encodeURIComponent(galleryCapability.token)}`;
   const resend = new Resend(process.env.RESEND_API_KEY);
 
   return runThrottledBatch({
@@ -143,6 +143,8 @@ async function sendGalleryAnnouncements(): Promise<GalleryAnnouncementBatchResul
       const householdId = String(recipient.id);
       let providerAccepted = false;
       try {
+        const galleryCapability = await createGalleryCapability(householdId);
+        const galleryUrl = `${baseUrl}/gallery?token=${encodeURIComponent(galleryCapability.token)}`;
         const sendResult = await resend.emails.send(
           {
             from: 'Alannah & Rob <hello@alannah-rob.ie>',
@@ -376,6 +378,26 @@ export async function POST(request: NextRequest) {
       return galleryAnnouncementRedirect(request, 'done', result);
     } catch {
       return galleryAnnouncementRedirect(request, 'failed');
+    }
+  }
+
+  if (action === 'rotate_gallery_link') {
+    if (!hasAdminAuth(request) || !isSameOriginRequest(request) || !csrfValid) {
+      return galleryLinkRotationResponse('Unauthorized', 403);
+    }
+
+    const householdId = formData.get('household_id');
+    if (!isUuid(householdId)) return galleryLinkRotationResponse('Invalid household ID', 400);
+
+    try {
+      const capability = await rotateGalleryCapability(householdId);
+      if (!capability) return galleryLinkRotationResponse('Household not found', 404);
+
+      const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? 'https://alannah-rob.ie').replace(/\/$/, '');
+      const galleryUrl = `${baseUrl}/gallery?token=${encodeURIComponent(capability.token)}`;
+      return galleryLinkRotationResponse(galleryUrl);
+    } catch {
+      return galleryLinkRotationResponse('Gallery link could not be rotated', 500);
     }
   }
 

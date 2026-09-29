@@ -20,6 +20,14 @@ type Member = {
   dietary: unknown;
 };
 
+type GalleryAssetDownload = {
+  asset_id: string;
+  display_name: string;
+  media_type: 'photo' | 'video';
+  request_count: number;
+  last_requested_at: string;
+};
+
 type Row = {
   id: string;
   label: string | null;
@@ -41,6 +49,11 @@ type Row = {
   open_count: number;
   first_opened_at: string | null;
   last_opened_at: string | null;
+  gallery_open_count: number;
+  gallery_first_opened_at: string | null;
+  gallery_last_opened_at: string | null;
+  download_request_count: number;
+  asset_downloads: GalleryAssetDownload[];
   song: string | null;
   message: string | null;
   submitted_at: string | null;
@@ -254,6 +267,11 @@ export default async function DashboardPage({ searchParams }: Props) {
       COALESCE(ho.open_count, 0) AS open_count,
       ho.first_opened_at,
       ho.last_opened_at,
+      COALESCE(ga.gallery_open_count, 0) AS gallery_open_count,
+      ga.gallery_first_opened_at,
+      ga.gallery_last_opened_at,
+      COALESCE(ga.download_request_count, 0) AS download_request_count,
+      COALESCE(ga.asset_downloads, '[]'::jsonb) AS asset_downloads,
       hr.song,
       hr.message,
       hr.submitted_at,
@@ -277,7 +295,50 @@ export default async function DashboardPage({ searchParams }: Props) {
       FROM household_rsvp_opens
       GROUP BY household_id
     ) ho ON ho.household_id = h.id
-    GROUP BY h.id, hr.song, hr.message, hr.submitted_at, ho.open_count, ho.first_opened_at, ho.last_opened_at
+    LEFT JOIN LATERAL (
+      SELECT
+        COUNT(*) FILTER (WHERE e.event_type = 'gallery_open')::int AS gallery_open_count,
+        MIN(e.created_at) FILTER (WHERE e.event_type = 'gallery_open') AS gallery_first_opened_at,
+        MAX(e.created_at) FILTER (WHERE e.event_type = 'gallery_open') AS gallery_last_opened_at,
+        COUNT(*) FILTER (WHERE e.event_type = 'download_request')::int AS download_request_count,
+        COALESCE((
+          SELECT jsonb_agg(jsonb_build_object(
+            'asset_id', downloads.asset_id,
+            'display_name', downloads.display_name,
+            'media_type', downloads.media_type,
+            'request_count', downloads.request_count,
+            'last_requested_at', downloads.last_requested_at
+          ) ORDER BY downloads.display_name, downloads.asset_id)
+          FROM (
+            SELECT
+              a.id AS asset_id,
+              a.display_name,
+              a.media_type,
+              COUNT(*)::int AS request_count,
+              MAX(download_event.created_at) AS last_requested_at
+            FROM gallery_activity_events download_event
+            JOIN gallery_assets a ON a.id = download_event.asset_id
+            WHERE download_event.household_id = h.id
+              AND download_event.event_type = 'download_request'
+            GROUP BY a.id, a.display_name, a.media_type
+          ) downloads
+        ), '[]'::jsonb) AS asset_downloads
+      FROM gallery_activity_events e
+      WHERE e.household_id = h.id
+    ) ga ON TRUE
+    GROUP BY
+      h.id,
+      hr.song,
+      hr.message,
+      hr.submitted_at,
+      ho.open_count,
+      ho.first_opened_at,
+      ho.last_opened_at,
+      ga.gallery_open_count,
+      ga.gallery_first_opened_at,
+      ga.gallery_last_opened_at,
+      ga.download_request_count,
+      ga.asset_downloads
   `) as Row[];
 
   const moderationQueryRows = (await sql`
@@ -556,7 +617,7 @@ export default async function DashboardPage({ searchParams }: Props) {
         ))}
       </div>
 
-      <DashboardTable rows={rows} />
+      <DashboardTable rows={rows} csrfToken={csrfToken} />
     </div>
   );
 }

@@ -20,22 +20,33 @@ import { GET as listGallery } from '../app/api/gallery/route';
 import { GET as getAssetUrl } from '../app/api/gallery/assets/[assetKey]/url/route';
 
 const galleryToken = 'a'.repeat(43);
+const householdId = '123e4567-e89b-12d3-a456-426614174001';
+const assetId = '123e4567-e89b-12d3-a456-426614174002';
 
-function request(path: string): NextRequest {
+function request(path: string, headers: Record<string, string> = {}): NextRequest {
   return new NextRequest(`http://localhost${path}`, {
-    headers: { 'x-forwarded-for': '198.51.100.10' },
+    headers: { 'x-forwarded-for': '198.51.100.10', ...headers },
   });
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
+
 describe('gallery viewer boundary', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     mocks.checkRateLimit.mockResolvedValue(true);
   });
 
   it('returns only published assets for a valid Gallery link', async () => {
     mocks.sql
-      .mockResolvedValueOnce([{ id: 'gallery-capability' }])
+      .mockResolvedValueOnce([{ household_id: householdId }])
       .mockResolvedValueOnce([
       {
         public_key: 'published-photo',
@@ -101,7 +112,7 @@ describe('gallery viewer boundary', () => {
     expect(mocks.sql).not.toHaveBeenCalled();
   });
   it('rejects malformed gallery cursors', async () => {
-    mocks.sql.mockResolvedValueOnce([{ id: 'gallery-capability' }]);
+    mocks.sql.mockResolvedValueOnce([{ household_id: householdId }]);
 
     const response = await listGallery(request(`/api/gallery?token=${galleryToken}&cursor=not-base64`));
 
@@ -122,8 +133,8 @@ describe('gallery viewer boundary', () => {
 
   it('issues a short-lived private direct URL for one published asset', async () => {
     mocks.sql
-      .mockResolvedValueOnce([{ id: 'gallery-capability' }])
-      .mockResolvedValueOnce([{ storage_key: 'gallery/published-photo.jpg' }]);
+      .mockResolvedValueOnce([{ household_id: householdId }])
+      .mockResolvedValueOnce([{ id: assetId, storage_key: 'gallery/published-photo.jpg' }]);
     mocks.issueSignedToken.mockResolvedValue({
       delegationToken: 'delegation',
       clientSigningToken: 'signing',
@@ -154,8 +165,127 @@ describe('gallery viewer boundary', () => {
       expect.anything(),
       expect.objectContaining({ access: 'private', operation: 'get', pathname: 'gallery/published-photo.jpg' }),
     );
+    const activityCall = mocks.sql.mock.calls[2] as unknown[];
+    const activityQuery = (activityCall[0] as TemplateStringsArray).join('');
+    expect(activityQuery).toContain("'download_request'");
+    expect(activityCall.slice(1)).toEqual([householdId, assetId]);
   });
-  it('paginates published assets with a stable oldest-first cursor', async () => {
+
+  it('does not count automatically issued preview URLs as download requests', async () => {
+    mocks.sql
+      .mockResolvedValueOnce([{ household_id: householdId }])
+      .mockResolvedValueOnce([{ id: assetId, storage_key: 'gallery/published-photo.jpg' }]);
+    mocks.issueSignedToken.mockResolvedValue({
+      delegationToken: 'delegation',
+      clientSigningToken: 'signing',
+      validUntil: Date.now() + 300_000,
+    });
+    mocks.presignUrl.mockResolvedValue({
+      presignedUrl: 'https://store.private.blob.vercel-storage.com/gallery/published-photo.jpg?signature=1',
+    });
+
+    const response = await getAssetUrl(
+      request(`/api/gallery/assets/published-photo/url?token=${galleryToken}`),
+      { params: { assetKey: 'published-photo' } },
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.sql).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps an issued download URL available when activity logging fails', async () => {
+    mocks.sql
+      .mockResolvedValueOnce([{ household_id: householdId }])
+      .mockResolvedValueOnce([{ id: assetId, storage_key: 'gallery/published-photo.jpg' }])
+      .mockRejectedValueOnce(new Error('activity database unavailable'));
+    mocks.issueSignedToken.mockResolvedValue({
+      delegationToken: 'delegation',
+      clientSigningToken: 'signing',
+      validUntil: Date.now() + 300_000,
+    });
+    mocks.presignUrl.mockResolvedValue({
+      presignedUrl: 'https://store.private.blob.vercel-storage.com/gallery/published-photo.jpg?signature=1',
+    });
+
+    const response = await getAssetUrl(
+      request(`/api/gallery/assets/published-photo/url?token=${galleryToken}&download=1`),
+      { params: { assetKey: 'published-photo' } },
+    );
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).url).toContain('.private.blob.vercel-storage.com/');
+  });
+  it('waits for Gallery-open activity logging before responding', async () => {
+    const activity = deferred<void>();
+    let insertStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      insertStarted = resolve;
+    });
+    mocks.sql
+      .mockResolvedValueOnce([{ household_id: householdId }])
+      .mockResolvedValueOnce([])
+      .mockImplementationOnce(() => {
+        insertStarted();
+        return activity.promise;
+      });
+
+    const responsePromise = listGallery(
+      request(`/api/gallery?token=${galleryToken}`, {
+        'x-gallery-session': '123e4567-e89b-42d3-a456-426614174000',
+      }),
+    );
+    await started;
+    let responseFinished = false;
+    void responsePromise.then(() => {
+      responseFinished = true;
+    });
+    await Promise.resolve();
+
+    expect(responseFinished).toBe(false);
+    activity.resolve(undefined);
+    expect((await responsePromise).status).toBe(200);
+  });
+
+  it('waits for download activity logging before responding', async () => {
+    const activity = deferred<void>();
+    let insertStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      insertStarted = resolve;
+    });
+    mocks.sql
+      .mockResolvedValueOnce([{ household_id: householdId }])
+      .mockResolvedValueOnce([{ id: assetId, storage_key: 'gallery/published-photo.jpg' }])
+      .mockImplementationOnce(() => {
+        insertStarted();
+        return activity.promise;
+      });
+    mocks.issueSignedToken.mockResolvedValue({
+      delegationToken: 'delegation',
+      clientSigningToken: 'signing',
+      validUntil: Date.now() + 300_000,
+    });
+    mocks.presignUrl.mockResolvedValue({
+      presignedUrl: 'https://store.private.blob.vercel-storage.com/gallery/published-photo.jpg?signature=1',
+    });
+
+    const responsePromise = getAssetUrl(
+      request(`/api/gallery/assets/published-photo/url?token=${galleryToken}&download=1`),
+      { params: { assetKey: 'published-photo' } },
+    );
+    await started;
+    let responseFinished = false;
+    void responsePromise.then(() => {
+      responseFinished = true;
+    });
+    await Promise.resolve();
+
+    expect(responseFinished).toBe(false);
+    activity.resolve(undefined);
+    expect((await responsePromise).status).toBe(200);
+  });
+
+  it('paginates published assets and records only the first open in a tab session', async () => {
+    const tabSessionId = '123e4567-e89b-12d3-a456-426614174000';
     const pagedAssets = Array.from({ length: 25 }, (_, index) => ({
       public_key: `published-photo-${index}`,
       media_type: 'photo',
@@ -166,10 +296,12 @@ describe('gallery viewer boundary', () => {
       moderation_status: 'published',
     }));
     mocks.sql
-      .mockResolvedValueOnce([{ id: 'gallery-capability' }])
+      .mockResolvedValueOnce([{ household_id: householdId }])
       .mockResolvedValueOnce(pagedAssets);
 
-    const firstResponse = await listGallery(request(`/api/gallery?token=${galleryToken}`));
+    const firstResponse = await listGallery(
+      request(`/api/gallery?token=${galleryToken}`, { 'x-gallery-session': tabSessionId }),
+    );
     const firstBody = await firstResponse.json();
     const firstQuery = mocks.sql.mock.calls[1] as unknown[];
     const firstQueryText = (firstQuery[0] as TemplateStringsArray).join('');
@@ -182,15 +314,23 @@ describe('gallery viewer boundary', () => {
       createdAt: pagedAssets[23].created_at,
       assetKey: 'published-photo-23',
     });
+    expect(mocks.sql).toHaveBeenCalledTimes(3);
+    const openCall = mocks.sql.mock.calls[2] as unknown[];
+    const openQuery = (openCall[0] as TemplateStringsArray).join('');
+    expect(openQuery).toContain("'gallery_open'");
+    expect(openQuery).toContain('ON CONFLICT DO NOTHING');
+    expect(openCall.slice(1)).toEqual([householdId, tabSessionId]);
 
     vi.clearAllMocks();
     mocks.checkRateLimit.mockResolvedValue(true);
     mocks.sql
-      .mockResolvedValueOnce([{ id: 'gallery-capability' }])
+      .mockResolvedValueOnce([{ household_id: householdId }])
       .mockResolvedValueOnce(pagedAssets.slice(24));
 
     const secondResponse = await listGallery(
-      request(`/api/gallery?token=${galleryToken}&cursor=${firstBody.next_cursor}`),
+      request(`/api/gallery?token=${galleryToken}&cursor=${firstBody.next_cursor}`, {
+        'x-gallery-session': tabSessionId,
+      }),
     );
     const secondBody = await secondResponse.json();
     const secondQuery = mocks.sql.mock.calls[1] as unknown[];
@@ -203,12 +343,13 @@ describe('gallery viewer boundary', () => {
     expect(secondQueryText).toContain('AND (created_at, public_key) > (');
     expect(secondQuery).toContain(pagedAssets[23].created_at);
     expect(secondQuery).toContain('published-photo-23');
+    expect(mocks.sql).toHaveBeenCalledTimes(2);
   });
 
 
   it('does not issue a URL for a pending asset or missing asset', async () => {
     mocks.sql
-      .mockResolvedValueOnce([{ id: 'gallery-capability' }])
+      .mockResolvedValueOnce([{ household_id: householdId }])
       .mockResolvedValueOnce([]);
 
     const response = await getAssetUrl(

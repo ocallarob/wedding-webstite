@@ -5,7 +5,8 @@ import {
   GALLERY_URL_RATE_LIMIT,
   isGalleryToken,
 } from '../../../../../../src/lib/galleryConfig';
-import { isValidGalleryCapability } from '../../../../../../src/lib/galleryCapabilities';
+import { getGalleryCapabilityHouseholdId } from '../../../../../../src/lib/galleryCapabilities';
+import { recordGalleryDownloadRequest } from '../../../../../../src/lib/galleryActivity';
 import { createGallerySignedUrl } from '../../../../../../src/lib/galleryStorage';
 
 export const dynamic = 'force-dynamic';
@@ -35,12 +36,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
     return errorResponse('Too many requests', 429);
   }
 
-  if (!(await isValidGalleryCapability(token))) {
-    return errorResponse('Invalid Gallery link', 404);
-  }
+  const householdId = await getGalleryCapabilityHouseholdId(token);
+  if (!householdId) return errorResponse('Invalid Gallery link', 404);
 
   const rows = await sql`
-    SELECT storage_key
+    SELECT id, storage_key
     FROM gallery_assets
     WHERE public_key = ${context.params.assetKey}
       AND moderation_status = 'published'
@@ -52,6 +52,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
   try {
     const signed = await createGallerySignedUrl(String(asset.storage_key), { download });
+    if (download) await recordGalleryDownloadRequest(householdId, String(asset.id));
     return NextResponse.json(
       { url: signed.url, expires_at: signed.expiresAt.toISOString() },
       { headers: { 'Cache-Control': 'private, no-store' } },

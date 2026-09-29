@@ -7,7 +7,8 @@ import {
   useRef,
   useState,
 } from 'react';
-import { clearGalleryToken, storeGalleryToken } from '../../src/lib/galleryAccess';
+import { clearGalleryToken, createGallerySessionId, storeGalleryToken } from '../../src/lib/galleryAccess';
+import { isUuid } from '../../src/lib/galleryConfig';
 
 type GalleryAsset = {
   asset_key: string;
@@ -67,13 +68,19 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-async function fetchGalleryPage(token: string, cursor: string | null, signal?: AbortSignal): Promise<GalleryPage> {
+async function fetchGalleryPage(
+  token: string,
+  cursor: string | null,
+  signal?: AbortSignal,
+  sessionId?: string,
+): Promise<GalleryPage> {
   const query = new URLSearchParams({ token });
   if (cursor) query.set('cursor', cursor);
 
   const response = await fetch(`/api/gallery?${query.toString()}`, {
     signal,
     cache: 'no-store',
+    headers: sessionId ? { 'x-gallery-session': sessionId } : undefined,
   });
   if (!response.ok) throw new GalleryResponseError(response.status);
 
@@ -368,7 +375,20 @@ export function GalleryClient({ token }: { token: string }) {
 
     async function loadInitialPage() {
       try {
-        const page = await fetchGalleryPage(token, null, controller.signal);
+        let sessionId = createGallerySessionId(window.crypto);
+        try {
+          const sessionStorageKey = `wedding-gallery-open-session:${token}`;
+          const storedSessionId = window.sessionStorage.getItem(sessionStorageKey);
+          if (isUuid(storedSessionId)) {
+            sessionId = storedSessionId;
+          } else if (sessionId) {
+            window.sessionStorage.setItem(sessionStorageKey, sessionId);
+          }
+        } catch {
+          // Per-tab deduplication is unavailable; count this open independently.
+        }
+
+        const page = await fetchGalleryPage(token, null, controller.signal, sessionId);
         if (controller.signal.aborted) return;
         storeGalleryToken(token);
         appendPage(page, true);

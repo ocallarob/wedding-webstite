@@ -9,12 +9,28 @@ The single collection of wedding media shared after the wedding. It is intention
 _Avoid_: Album, gallery section
 
 **Gallery link**:
-A semi-private link to the event gallery; possession of the link grants viewing access, but the gallery is not publicly listed or identity-restricted.
+A semi-private link granting access to the event gallery by possession; the gallery is not publicly listed or identity-restricted.
 _Avoid_: Private gallery, public gallery
 
+**Household Gallery link**:
+A Gallery link associated with one household. Use of the link is attributed to that household, not to a specific person; forwarding does not change that attribution.
+_Avoid_: Household token, RSVP invitation link
+
 **Gallery viewer**:
-A person viewing the event gallery with a currently valid Gallery link. This is link-based access, not an identity or account.
+A person viewing the event gallery through a currently valid Gallery link. A household association does not identify which household member—or other link holder—is viewing.
 _Avoid_: Validated user, account
+
+**Gallery open**:
+A successful opening of the event gallery through a valid Gallery link, counted once within a browser-tab session. A new tab session may count separately; the count does not identify a person.
+_Avoid_: Unique viewer
+
+**Download request**:
+A request for a downloadable copy of one published asset. It records an intent to download, not confirmation that the transfer completed.
+_Avoid_: Completed download
+
+**Single-asset download**:
+A viewer requests one published asset at a time, typically its original file. The event gallery does not provide multi-select or bulk-download actions.
+_Avoid_: Bulk download, download all
 
 **Asset**:
 One photograph or video belonging to the event gallery.
@@ -27,10 +43,6 @@ _Avoid_: Hidden photo
 **Published asset**:
 An approved asset that is visible to gallery viewers.
 _Avoid_: Approved upload
-
-**Single-asset download**:
-A viewer downloads one published asset at a time, typically its original file. The event gallery does not provide multi-select or bulk downloads.
-_Avoid_: Bulk download, download all
 
 
 **Gallery announcement**:

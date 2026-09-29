@@ -118,6 +118,41 @@ describe('Gallery announcement boundary', () => {
     expect(mocks.createGalleryCapability).toHaveBeenCalledTimes(1);
   });
 
+  it('issues a separate Gallery link for each eligible household', async () => {
+    const secondHousehold = {
+      id: 'household-b',
+      label: 'Casey & Drew',
+      contact_email: 'casey@example.com',
+      gallery_announcement_sent_at: null,
+      members: [{ full_name: 'Casey', attending_day1: false, attending_day2: true }],
+    };
+    const tokenA = 'a'.repeat(43);
+    const tokenB = 'b'.repeat(43);
+    mocks.sql
+      .mockResolvedValueOnce([eligibleHousehold, secondHousehold])
+      .mockResolvedValueOnce([{ id: 'household-a' }])
+      .mockResolvedValueOnce([{ id: 'household-b' }]);
+    mocks.createGalleryCapability
+      .mockResolvedValueOnce({ token: tokenA, expiresAt })
+      .mockResolvedValueOnce({ token: tokenB, expiresAt });
+
+    await postDashboard(dashboardRequest('send_gallery_announcements'));
+
+    const messages = mocks.sendEmail.mock.calls.map(([message]) => message);
+    expect(messages.map((message) => message.to)).toEqual([
+      'anne@example.com',
+      'casey@example.com',
+    ]);
+    expect(messages[0].html).toContain(`gallery?token=${tokenA}`);
+    expect(messages[0].html).not.toContain(tokenB);
+    expect(messages[1].html).toContain(`gallery?token=${tokenB}`);
+    expect(messages[1].html).not.toContain(tokenA);
+    expect(mocks.createGalleryCapability.mock.calls).toEqual([
+      ['household-a'],
+      ['household-b'],
+    ]);
+  });
+
   it('excludes non-Gallery-eligible households, continues after provider failure, and records retryable failure', async () => {
     mocks.sql
       .mockResolvedValueOnce([

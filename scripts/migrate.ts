@@ -109,16 +109,26 @@ async function migrate() {
   await sql`
     CREATE TABLE IF NOT EXISTS gallery_capabilities (
       id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      household_id UUID REFERENCES households(id) ON DELETE CASCADE,
       token_hash   TEXT NOT NULL UNIQUE,
       expires_at   TIMESTAMPTZ NOT NULL,
       revoked_at   TIMESTAMPTZ
     )
+  `;
+  await sql`
+    ALTER TABLE gallery_capabilities
+    ADD COLUMN IF NOT EXISTS household_id UUID REFERENCES households(id) ON DELETE CASCADE
   `;
 
   await sql`
     CREATE INDEX IF NOT EXISTS gallery_capabilities_active_idx
     ON gallery_capabilities (expires_at)
     WHERE revoked_at IS NULL
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS gallery_capabilities_household_active_idx
+    ON gallery_capabilities (household_id, expires_at)
+    WHERE revoked_at IS NULL AND household_id IS NOT NULL
   `;
 
   await sql`
@@ -149,6 +159,37 @@ async function migrate() {
   await sql`
     CREATE INDEX IF NOT EXISTS gallery_assets_household_idx
     ON gallery_assets (household_id, created_at DESC)
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS gallery_activity_events (
+      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      household_id  UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+      event_type    TEXT NOT NULL CHECK (event_type IN ('gallery_open', 'download_request')),
+      session_id    UUID,
+      asset_id      UUID REFERENCES gallery_assets(id) ON DELETE RESTRICT,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+      CHECK (
+        (event_type = 'gallery_open' AND session_id IS NOT NULL AND asset_id IS NULL)
+        OR (event_type = 'download_request' AND session_id IS NULL AND asset_id IS NOT NULL)
+      )
+    )
+  `;
+
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS gallery_activity_open_session_idx
+    ON gallery_activity_events (household_id, session_id)
+    WHERE event_type = 'gallery_open'
+  `;
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS gallery_activity_household_type_created_idx
+    ON gallery_activity_events (household_id, event_type, created_at DESC)
+  `;
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS gallery_activity_asset_download_idx
+    ON gallery_activity_events (household_id, asset_id, created_at DESC)
+    WHERE event_type = 'download_request'
   `;
 
   console.log('Migration complete');
