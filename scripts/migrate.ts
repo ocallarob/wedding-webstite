@@ -3,11 +3,6 @@ import { neon } from '@neondatabase/serverless';
 const sql = neon(process.env.DATABASE_URL!);
 
 async function migrate() {
-  // Full cutover: legacy model is no longer used.
-  await sql`DROP TABLE IF EXISTS rsvps`;
-  await sql`DROP TABLE IF EXISTS guests`;
-  await sql`DROP TABLE IF EXISTS gallery_upload_sessions`;
-  await sql`DROP TABLE IF EXISTS upload_portal_capabilities`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS households (
@@ -137,7 +132,10 @@ async function migrate() {
       public_key          TEXT NOT NULL UNIQUE,
       household_id        UUID REFERENCES households(id) ON DELETE SET NULL,
       storage_key         TEXT NOT NULL UNIQUE,
+      thumbnail_key       TEXT,
       media_type          TEXT NOT NULL CHECK (media_type IN ('photo', 'video')),
+      photo_source        TEXT NOT NULL DEFAULT 'guest'
+        CHECK (photo_source IN ('professional', 'guest')),
       content_type        TEXT NOT NULL,
       size_bytes          BIGINT NOT NULL CHECK (size_bytes >= 0),
       display_name        TEXT NOT NULL,
@@ -150,10 +148,24 @@ async function migrate() {
       cleanup_error       TEXT
     )
   `;
+  await sql`
+    ALTER TABLE gallery_assets
+    ADD COLUMN IF NOT EXISTS photo_source TEXT NOT NULL DEFAULT 'guest'
+      CHECK (photo_source IN ('professional', 'guest'))
+  `;
+  await sql`
+    ALTER TABLE gallery_assets
+    ADD COLUMN IF NOT EXISTS thumbnail_key TEXT
+  `;
 
   await sql`
     CREATE INDEX IF NOT EXISTS gallery_assets_viewer_idx
     ON gallery_assets (moderation_status, created_at DESC)
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS gallery_assets_source_viewer_idx
+    ON gallery_assets (photo_source, created_at ASC, public_key ASC)
+    WHERE moderation_status = 'published'
   `;
 
   await sql`

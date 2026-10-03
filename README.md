@@ -54,11 +54,26 @@ Run schema migration:
 pnpm db:migrate
 ```
 
+The migration preserves existing tables; legacy tables are not dropped.
+
 Seed test data:
 
 ```bash
 pnpm db:seed
 ```
+
+## Gallery asset import
+
+Each batch must specify its source:
+
+```bash
+pnpm gallery:upload -- --source guest /path/to/table-camera-photos
+pnpm gallery:upload -- --source professional /path/to/professional-photos
+```
+
+CLI imports are published immediately. Re-importing an existing pending CLI asset publishes it; dashboard moderation remains available for later rejection or removal. The viewer filters by source on the server and loads 48 assets per page; signed previews are returned in each page and image bytes load as cards approach the viewport.
+Photo imports use Sharp to generate private WebP thumbnails up to 800px wide and upload them with the Blob credentials above. Unsupported or failed conversions fall back to the original. Re-importing the same files backfills missing thumbnails and updates their source classification.
+
 
 ## CSV Guest Import
 
@@ -118,7 +133,7 @@ Behavior:
 
 
 - `/gallery?token=...`
-  Unlisted event gallery link. The dashboard sends a distinct Gallery announcement with this link and asks recipients to send photographs or videos to one of us on WhatsApp.
+  Unlisted event gallery link. Viewers can switch between all assets, professional photos, and table-camera photos without creating separate galleries. The dashboard sends a distinct Gallery announcement with this link and asks recipients to send photographs or videos to one of us on WhatsApp.
 
 - `/gallery-announcement-preview`
   HTML-only preview of the Gallery announcement; it never sends email.

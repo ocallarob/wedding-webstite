@@ -36,6 +36,10 @@ _Avoid_: Bulk download, download all
 One photograph or video belonging to the event gallery.
 _Avoid_: File
 
+**Photo source**:
+The distinction between professional photographs and guest photographs taken with table cameras. Source filters show subsets of the same event gallery rather than separate collections.
+_Avoid_: Album, gallery section
+
 **Pending asset**:
 An event-gallery asset awaiting review and not yet visible in the event gallery.
 _Avoid_: Hidden photo

@@ -4,6 +4,7 @@ import { GALLERY_SIGNED_URL_TTL_SECONDS } from './galleryConfig';
 type SignedUrlOptions = {
   download?: boolean;
   validUntil?: number;
+  useCache?: boolean;
 };
 
 export async function createGallerySignedUrl(
@@ -21,7 +22,7 @@ export async function createGallerySignedUrl(
     operation: 'get',
     pathname: storageKey,
     validUntil,
-    useCache: false,
+    useCache: options.useCache ?? false,
   });
 
   if (!options.download) return { url: presignedUrl, expiresAt: new Date(validUntil) };

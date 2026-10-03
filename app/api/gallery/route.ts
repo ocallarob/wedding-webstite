@@ -3,23 +3,28 @@ import { sql } from '../../../src/lib/db';
 import { checkRateLimit } from '../../../src/lib/rateLimit';
 import {
   GALLERY_LIST_RATE_LIMIT,
+  isGallerySourceFilter,
   isGalleryToken,
   type GalleryMediaType,
+  type GalleryPhotoSource,
+  type GallerySourceFilter,
 } from '../../../src/lib/galleryConfig';
 import { getGalleryCapabilityHouseholdId } from '../../../src/lib/galleryCapabilities';
 import { recordGalleryOpen } from '../../../src/lib/galleryActivity';
+import { createGallerySignedUrl } from '../../../src/lib/galleryStorage';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const GALLERY_PAGE_SIZE = 24;
+const GALLERY_PAGE_SIZE = 48;
 
 type GalleryCursor = {
   createdAt: string;
   assetKey: string;
+  source: GallerySourceFilter;
 };
 
-function decodeGalleryCursor(value: string | null): GalleryCursor | null {
+function decodeGalleryCursor(value: string | null, source: GallerySourceFilter): GalleryCursor | null {
   if (!value) return null;
 
   try {
@@ -30,23 +35,26 @@ function decodeGalleryCursor(value: string | null): GalleryCursor | null {
       || typeof parsed.assetKey !== 'string'
       || parsed.assetKey.length === 0
       || parsed.assetKey.length > 256
+      || !isGallerySourceFilter(parsed.source)
+      || parsed.source !== source
     ) {
       return null;
     }
 
-    return { createdAt: parsed.createdAt, assetKey: parsed.assetKey };
+    return { createdAt: parsed.createdAt, assetKey: parsed.assetKey, source: parsed.source };
   } catch {
     return null;
   }
 }
 
-function encodeGalleryCursor(createdAt: string, assetKey: string): string {
-  return Buffer.from(JSON.stringify({ createdAt, assetKey }), 'utf8').toString('base64url');
+function encodeGalleryCursor(createdAt: string, assetKey: string, source: GallerySourceFilter): string {
+  return Buffer.from(JSON.stringify({ createdAt, assetKey, source }), 'utf8').toString('base64url');
 }
 
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get('token');
   const cursorValue = request.nextUrl.searchParams.get('cursor');
+  const sourceValue = request.nextUrl.searchParams.get('source') ?? 'all';
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
 
   if (!isGalleryToken(token)) {
@@ -67,20 +75,31 @@ export async function GET(request: NextRequest) {
       { status: 404, headers: { 'Cache-Control': 'no-store' } },
     );
   }
+  const source = sourceValue;
+  if (!isGallerySourceFilter(source)) {
+    return NextResponse.json(
+      { error: 'Invalid gallery source' },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
 
-  if (cursorValue && !decodeGalleryCursor(cursorValue)) {
+
+  if (cursorValue && !decodeGalleryCursor(cursorValue, source)) {
     return NextResponse.json(
       { error: 'Invalid gallery cursor' },
       { status: 400, headers: { 'Cache-Control': 'no-store' } },
     );
   }
 
-  const cursor = decodeGalleryCursor(cursorValue);
+  const cursor = decodeGalleryCursor(cursorValue, source);
   const rows = cursor
     ? await sql`
         SELECT
           public_key,
           media_type,
+          photo_source,
+          storage_key,
+          thumbnail_key,
           content_type,
           size_bytes,
           display_name,
@@ -89,6 +108,7 @@ export async function GET(request: NextRequest) {
           moderation_status
         FROM gallery_assets
         WHERE moderation_status = 'published'
+          AND (${source} = 'all' OR photo_source = ${source})
           AND (created_at, public_key) > (${cursor.createdAt}::timestamptz, ${cursor.assetKey})
         ORDER BY created_at ASC, public_key ASC
         LIMIT ${GALLERY_PAGE_SIZE + 1}
@@ -97,7 +117,10 @@ export async function GET(request: NextRequest) {
         SELECT
           public_key,
           media_type,
+          photo_source,
           content_type,
+          storage_key,
+          thumbnail_key,
           size_bytes,
           display_name,
           created_at,
@@ -105,6 +128,7 @@ export async function GET(request: NextRequest) {
           moderation_status
         FROM gallery_assets
         WHERE moderation_status = 'published'
+          AND (${source} = 'all' OR photo_source = ${source})
         ORDER BY created_at ASC, public_key ASC
         LIMIT ${GALLERY_PAGE_SIZE + 1}
       `;
@@ -114,6 +138,8 @@ export async function GET(request: NextRequest) {
     .map((row) => ({
       asset_key: String(row.public_key),
       media_type: row.media_type as GalleryMediaType,
+      photo_source: row.photo_source as GalleryPhotoSource,
+      preview_storage_key: String(row.thumbnail_key ?? row.storage_key),
       content_type: String(row.content_type),
       size_bytes: Number(row.size_bytes),
       display_name: String(row.display_name),
@@ -124,9 +150,20 @@ export async function GET(request: NextRequest) {
   const pageAssets = hasMore ? assets.slice(0, GALLERY_PAGE_SIZE) : assets;
   const lastAsset = pageAssets[pageAssets.length - 1];
   const nextCursor = hasMore && lastAsset
-    ? encodeGalleryCursor(lastAsset.created_at_cursor, lastAsset.asset_key)
+    ? encodeGalleryCursor(lastAsset.created_at_cursor, lastAsset.asset_key, source)
     : null;
-  const responseAssets = pageAssets.map(({ created_at_cursor: _createdAtCursor, ...asset }) => asset);
+  const responseAssets = await Promise.all(pageAssets.map(async ({
+    created_at_cursor: _createdAtCursor,
+    preview_storage_key,
+    ...asset
+  }) => {
+    try {
+      const signed = await createGallerySignedUrl(preview_storage_key, { useCache: true });
+      return { ...asset, preview_url: signed.url };
+    } catch {
+      return { ...asset, preview_url: null };
+    }
+  }));
   if (!cursor) await recordGalleryOpen(householdId, request.headers.get('x-gallery-session'));
 
   return NextResponse.json(

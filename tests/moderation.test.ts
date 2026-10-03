@@ -70,27 +70,39 @@ describe('dashboard moderation boundary', () => {
     expect(mocks.sql).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects a pending asset and deletes its private object', async () => {
+  it('rejects a pending asset and deletes its original and private thumbnail', async () => {
     mocks.sql
-      .mockResolvedValueOnce([{ id: 'asset-id', storage_key: 'gallery/asset.jpg', moderation_status: 'pending', cleanup_error: null }])
+      .mockResolvedValueOnce([{
+        id: 'asset-id',
+        storage_key: 'gallery/asset.jpg',
+        thumbnail_key: 'gallery/asset.preview.webp',
+        moderation_status: 'pending',
+        cleanup_error: null,
+      }])
       .mockResolvedValueOnce([{ id: 'asset-id' }]);
 
     const response = await dashboardPost(request('reject_gallery_asset'));
 
     expect(location(response)).toBe('rejected');
-    expect(mocks.del).toHaveBeenCalledWith('gallery/asset.jpg');
+    expect(mocks.del).toHaveBeenCalledWith(['gallery/asset.jpg', 'gallery/asset.preview.webp']);
     expect(mocks.sql).toHaveBeenCalledTimes(3);
   });
 
   it('retries rejected cleanup without changing its moderation state', async () => {
     mocks.sql.mockResolvedValueOnce([
-      { id: 'asset-id', storage_key: 'gallery/asset.jpg', moderation_status: 'rejected', cleanup_error: 'blob unavailable' },
+      {
+        id: 'asset-id',
+        storage_key: 'gallery/asset.jpg',
+        thumbnail_key: 'gallery/asset.preview.webp',
+        moderation_status: 'rejected',
+        cleanup_error: 'blob unavailable',
+      },
     ]);
 
     const response = await dashboardPost(request('reject_gallery_asset'));
 
     expect(location(response)).toBe('already_rejected');
-    expect(mocks.del).toHaveBeenCalledWith('gallery/asset.jpg');
+    expect(mocks.del).toHaveBeenCalledWith(['gallery/asset.jpg', 'gallery/asset.preview.webp']);
     expect(mocks.sql).toHaveBeenCalledTimes(2);
   });
 
@@ -112,7 +124,7 @@ describe('dashboard moderation boundary', () => {
     const response = await dashboardPost(request('remove_gallery_asset'));
 
     expect(location(response)).toBe('removed');
-    expect(mocks.del).toHaveBeenCalledWith('gallery/asset.mp4');
+    expect(mocks.del).toHaveBeenCalledWith(['gallery/asset.mp4']);
     expect(mocks.sql).toHaveBeenCalledTimes(3);
   });
 
@@ -135,7 +147,7 @@ describe('dashboard moderation boundary', () => {
     const response = await dashboardPost(request('remove_gallery_asset'));
 
     expect(location(response)).toBe('cleanup_failed');
-    expect(mocks.del).toHaveBeenCalledWith('gallery/asset.mp4');
+    expect(mocks.del).toHaveBeenCalledWith(['gallery/asset.mp4']);
     expect(mocks.sql).toHaveBeenCalledTimes(3);
   });
 

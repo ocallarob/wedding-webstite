@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -8,16 +9,23 @@ import {
   useState,
 } from 'react';
 import { clearGalleryToken, createGallerySessionId, storeGalleryToken } from '../../src/lib/galleryAccess';
-import { isUuid } from '../../src/lib/galleryConfig';
+import { isUuid, type GalleryPhotoSource, type GallerySourceFilter } from '../../src/lib/galleryConfig';
 
 type GalleryAsset = {
   asset_key: string;
   media_type: 'photo' | 'video';
+  photo_source: GalleryPhotoSource;
   content_type: string;
   size_bytes: number;
   display_name: string;
   created_at: string;
+  preview_url: string | null;
 };
+const SOURCE_FILTERS: { source: GallerySourceFilter; label: string }[] = [
+  { source: 'all', label: 'All' },
+  { source: 'professional', label: 'Professional' },
+  { source: 'guest', label: 'Table cameras' },
+];
 
 type PreviewState =
   | { status: 'idle' }
@@ -25,6 +33,7 @@ type PreviewState =
   | { status: 'ready'; url: string }
   | { status: 'error' }
   | { status: 'unsupported' };
+type ThumbnailState = 'loading' | 'error';
 
 type DownloadState = 'loading' | 'error' | undefined;
 
@@ -70,11 +79,12 @@ function formatBytes(bytes: number): string {
 
 async function fetchGalleryPage(
   token: string,
+  source: GallerySourceFilter,
   cursor: string | null,
   signal?: AbortSignal,
   sessionId?: string,
 ): Promise<GalleryPage> {
-  const query = new URLSearchParams({ token });
+  const query = new URLSearchParams({ token, source });
   if (cursor) query.set('cursor', cursor);
 
   const response = await fetch(`/api/gallery?${query.toString()}`, {
@@ -95,38 +105,80 @@ async function fetchGalleryPage(
   };
 }
 
-function LazyPhotoCard({
+const LazyPhotoCard = memo(function LazyPhotoCard({
   asset,
   index,
-  preview,
+  previewUrl,
   total,
   onOpen,
-  onPreviewError,
-  onVisible,
+  onRefreshPreview,
 }: {
   asset: GalleryAsset;
   index: number;
-  preview: PreviewState;
+  previewUrl: string | null;
   total: number;
-  onOpen: () => void;
-  onPreviewError: () => void;
-  onVisible: () => void;
+  onOpen: (assetKey: string) => void;
+  onRefreshPreview: (assetKey: string) => Promise<string>;
 }) {
   const cardRef = useRef<HTMLElement>(null);
+  const retryCountRef = useRef(0);
+  const refreshRequestRef = useRef<Promise<void> | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const [currentPreviewUrl, setCurrentPreviewUrl] = useState(previewUrl);
+  const [thumbnailState, setThumbnailState] = useState<ThumbnailState | undefined>();
 
   useEffect(() => {
+    setCurrentPreviewUrl(previewUrl);
+    setThumbnailState(undefined);
+    retryCountRef.current = 0;
+  }, [previewUrl]);
+
+  const refreshPreview = useCallback(() => {
+    if (refreshRequestRef.current) return refreshRequestRef.current;
+    if (retryCountRef.current >= 1) {
+      setThumbnailState('error');
+      return;
+    }
+
+    retryCountRef.current += 1;
+    setThumbnailState('loading');
+    const request = (async () => {
+      try {
+        const refreshedUrl = await onRefreshPreview(asset.asset_key);
+        if (!refreshedUrl || refreshedUrl === currentPreviewUrl) {
+          setThumbnailState('error');
+          return;
+        }
+        setCurrentPreviewUrl(refreshedUrl);
+        setThumbnailState(undefined);
+      } catch {
+        setThumbnailState('error');
+      } finally {
+        refreshRequestRef.current = null;
+      }
+    })();
+    refreshRequestRef.current = request;
+    return request;
+  }, [asset.asset_key, currentPreviewUrl, onRefreshPreview]);
+
+  useEffect(() => {
+    if (isVisible) return;
     const target = cardRef.current;
     if (!target) return;
 
+    const reveal = () => {
+      setIsVisible(true);
+      if (!currentPreviewUrl) void refreshPreview();
+    };
     if (!('IntersectionObserver' in window)) {
-      onVisible();
+      reveal();
       return;
     }
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
-          onVisible();
+          reveal();
           observer.disconnect();
         }
       },
@@ -134,42 +186,61 @@ function LazyPhotoCard({
     );
     observer.observe(target);
     return () => observer.disconnect();
-  }, [onVisible]);
+  }, [asset.asset_key, currentPreviewUrl, isVisible, refreshPreview]);
 
   return (
-    <article ref={cardRef} className="overflow-hidden rounded-2xl border border-stone bg-white/80 p-3 shadow-[0_10px_30px_rgba(58,53,48,0.05)]">
+    <article ref={cardRef} className="overflow-hidden rounded-2xl border border-stone bg-white/80 p-3 shadow-[0_10px_30px_rgba(58,53,48,0.05)] [content-visibility:auto] [contain-intrinsic-size:auto_10rem] sm:[contain-intrinsic-size:auto_14rem] xl:[contain-intrinsic-size:auto_16rem]">
       <button
         type="button"
-        onClick={onOpen}
+        onClick={() => onOpen(asset.asset_key)}
         className="block w-full rounded-xl text-left focus:outline-none focus:ring-2 focus:ring-mauve/50 focus:ring-offset-2 focus:ring-offset-white"
         aria-label={`Open photo ${index + 1} of ${total}`}
       >
-        <div className="flex min-h-64 items-center justify-center overflow-hidden rounded-xl bg-stone/25">
-          {preview.status === 'idle' && (
-            <span className="px-4 text-center text-sm text-muted">Loading preview as you scroll…</span>
-          )}
-          {preview.status === 'loading' && (
-            <span role="status" className="px-4 text-center text-sm text-muted">Loading preview…</span>
-          )}
-          {preview.status === 'error' && (
-            <span role="alert" className="px-4 text-center text-sm text-red-700">Preview unavailable.</span>
-          )}
-          {preview.status === 'ready' && (
+        <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl bg-stone/25">
+          {thumbnailState === 'error' ? (
+            <span role="alert" className="px-4 text-center text-sm text-red-700">
+              Preview unavailable.
+            </span>
+          ) : thumbnailState === 'loading' ? (
+            <span role="status" className="px-4 text-center text-sm text-muted">Refreshing preview…</span>
+          ) : isVisible && currentPreviewUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={preview.url}
+              src={currentPreviewUrl}
               alt="Published gallery photo"
-              className="max-h-[28rem] w-full object-contain"
-              onError={onPreviewError}
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover"
+              onError={() => void refreshPreview()}
+              onLoad={() => {
+                retryCountRef.current = 0;
+                setThumbnailState(undefined);
+              }}
             />
+          ) : (
+            <span className="px-4 text-center text-sm text-muted">
+              {isVisible ? 'Loading preview…' : 'Loading preview as you scroll…'}
+            </span>
           )}
         </div>
       </button>
+      {thumbnailState === 'error' && (
+        <button
+          type="button"
+          onClick={() => {
+            retryCountRef.current = 0;
+            void refreshPreview();
+          }}
+          className="mt-2 w-full text-xs uppercase tracking-[0.14em] text-mauve underline-offset-4 hover:underline focus:outline-none focus:ring-2 focus:ring-mauve/40"
+        >
+          Retry preview
+        </button>
+      )}
     </article>
   );
-}
+});
 
-function VideoCard({
+const VideoCard = memo(function VideoCard({
   asset,
   downloadState,
   onDownload,
@@ -178,13 +249,13 @@ function VideoCard({
 }: {
   asset: GalleryAsset;
   downloadState: DownloadState;
-  onDownload: () => void;
-  onPreviewError: () => void;
+  onDownload: (assetKey: string) => void;
+  onPreviewError: (assetKey: string) => void;
   preview: PreviewState;
 }) {
   return (
-    <article className="overflow-hidden rounded-2xl border border-stone bg-white/80 p-3 shadow-[0_10px_30px_rgba(58,53,48,0.05)]">
-      <div className="flex min-h-64 items-center justify-center overflow-hidden rounded-xl bg-stone/25">
+    <article className="col-span-2 overflow-hidden rounded-2xl border border-stone bg-white/80 p-3 shadow-[0_10px_30px_rgba(58,53,48,0.05)] [content-visibility:auto] [contain-intrinsic-size:auto_24rem] md:col-span-1">
+      <div className="flex aspect-video items-center justify-center overflow-hidden rounded-xl bg-stone/25">
         {preview.status === 'loading' && (
           <p role="status" className="px-4 text-center text-sm text-muted">Loading preview…</p>
         )}
@@ -198,9 +269,9 @@ function VideoCard({
             src={preview.url}
             controls
             preload="metadata"
-            className="max-h-[28rem] w-full"
+            className="h-full w-full object-contain"
             aria-label={asset.display_name}
-            onError={onPreviewError}
+            onError={() => onPreviewError(asset.asset_key)}
           />
         )}
         {preview.status === 'unsupported' && (
@@ -220,7 +291,7 @@ function VideoCard({
         <button
           type="button"
           className="shrink-0 text-xs uppercase tracking-[0.14em] text-mauve underline-offset-4 hover:underline focus:outline-none focus:ring-2 focus:ring-mauve/40 disabled:cursor-wait disabled:opacity-60"
-          onClick={onDownload}
+          onClick={() => onDownload(asset.asset_key)}
           disabled={downloadState === 'loading'}
           aria-busy={downloadState === 'loading'}
           aria-label={`Download ${asset.display_name}`}
@@ -235,10 +306,11 @@ function VideoCard({
       )}
     </article>
   );
-}
+});
 
 export function GalleryClient({ token }: { token: string }) {
   const [assets, setAssets] = useState<GalleryAsset[]>([]);
+  const [source, setSource] = useState<GallerySourceFilter>('all');
   const [previews, setPreviews] = useState<Record<string, PreviewState>>({});
   const [downloads, setDownloads] = useState<Record<string, DownloadState>>({});
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -264,6 +336,32 @@ export function GalleryClient({ token }: { token: string }) {
     previewsRef.current = { ...previewsRef.current, [assetKey]: state };
     setPreviews((current) => ({ ...current, [assetKey]: state }));
   }, []);
+  const fetchAssetUrl = useCallback(async (
+    assetKey: string,
+    { preview = false }: { preview?: boolean } = {},
+  ): Promise<string> => {
+    const query = new URLSearchParams({ token });
+    if (preview) query.set('preview', '1');
+    const requestUrl = `/api/gallery/assets/${encodeURIComponent(assetKey)}/url?${query.toString()}`;
+    const signal = abortControllerRef.current?.signal;
+    let response: Response | null = null;
+    for (let attempt = 0; attempt <= PREVIEW_MAX_RETRIES; attempt += 1) {
+      response = await fetch(requestUrl, { signal, cache: 'no-store' });
+      if (response.status !== 429 || attempt === PREVIEW_MAX_RETRIES) break;
+
+      const delay = PREVIEW_RETRY_BASE_DELAY_MS * (2 ** attempt)
+        + Math.floor(Math.random() * PREVIEW_RETRY_JITTER_MS);
+      await waitForPreviewRetry(delay, signal);
+    }
+    if (!response || !response.ok) throw new GalleryResponseError(response?.status ?? 503);
+    const body = (await response.json()) as { url?: string };
+    if (!body.url) throw new Error('Asset URL missing');
+    return body.url;
+  }, [token]);
+  const refreshThumbnailUrl = useCallback(
+    (assetKey: string) => fetchAssetUrl(assetKey, { preview: true }),
+    [fetchAssetUrl],
+  );
 
   const loadPreview = useCallback(async (assetKey: string) => {
     const current = previewsRef.current[assetKey];
@@ -274,21 +372,8 @@ export function GalleryClient({ token }: { token: string }) {
     updatePreview(assetKey, { status: 'loading' });
     const request = (async () => {
       try {
-        const requestUrl = `/api/gallery/assets/${encodeURIComponent(assetKey)}/url?token=${encodeURIComponent(token)}`;
-        const signal = abortControllerRef.current?.signal;
-        let response: Response | null = null;
-        for (let attempt = 0; attempt <= PREVIEW_MAX_RETRIES; attempt += 1) {
-          response = await fetch(requestUrl, { signal, cache: 'no-store' });
-          if (response.status !== 429 || attempt === PREVIEW_MAX_RETRIES) break;
-
-          const delay = PREVIEW_RETRY_BASE_DELAY_MS * (2 ** attempt)
-            + Math.floor(Math.random() * PREVIEW_RETRY_JITTER_MS);
-          await waitForPreviewRetry(delay, signal);
-        }
-        if (!response || !response.ok) throw new GalleryResponseError(response?.status ?? 503);
-        const body = (await response.json()) as { url?: string };
-        if (!body.url) throw new Error('Asset URL missing');
-        updatePreview(assetKey, { status: 'ready', url: body.url });
+        const url = await fetchAssetUrl(assetKey);
+        updatePreview(assetKey, { status: 'ready', url });
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') return;
         updatePreview(assetKey, { status: 'error' });
@@ -298,7 +383,10 @@ export function GalleryClient({ token }: { token: string }) {
     })();
     previewRequestsRef.current[assetKey] = request;
     return request;
-  }, [token, updatePreview]);
+  }, [fetchAssetUrl, updatePreview]);
+  const markVideoPreviewUnsupported = useCallback((assetKey: string) => {
+    updatePreview(assetKey, { status: 'unsupported' });
+  }, [updatePreview]);
 
   const appendPage = useCallback((page: GalleryPage, replace: boolean) => {
     const existingAssets = replace ? [] : assetsRef.current;
@@ -309,14 +397,19 @@ export function GalleryClient({ token }: { token: string }) {
     setAssets(nextAssets);
 
     const nextPreviews = replace ? {} : { ...previewsRef.current };
-    for (const asset of newAssets) nextPreviews[asset.asset_key] = { status: 'idle' };
+    for (const asset of newAssets) {
+      if (asset.media_type !== 'video') continue;
+      nextPreviews[asset.asset_key] = asset.preview_url
+        ? { status: 'ready', url: asset.preview_url }
+        : { status: 'idle' };
+    }
     previewsRef.current = nextPreviews;
     setPreviews(nextPreviews);
 
     nextCursorRef.current = page.nextCursor;
     setNextCursor(page.nextCursor);
     for (const asset of newAssets) {
-      if (asset.media_type === 'video') void loadPreview(asset.asset_key);
+      if (asset.media_type === 'video' && !asset.preview_url) void loadPreview(asset.asset_key);
     }
     return newAssets;
   }, [loadPreview]);
@@ -326,12 +419,14 @@ export function GalleryClient({ token }: { token: string }) {
     if (!cursor) return Promise.resolve([]);
     if (loadMorePromiseRef.current) return loadMorePromiseRef.current;
 
+    const controller = abortControllerRef.current;
     const request = (async () => {
       loadingMoreRef.current = true;
       setLoadingMore(true);
       setLoadMoreError(false);
       try {
-        const page = await fetchGalleryPage(token, cursor, abortControllerRef.current?.signal);
+        const page = await fetchGalleryPage(token, source, cursor, controller?.signal);
+        if (controller?.signal.aborted) return [];
         const newAssets = appendPage(page, false);
         if (page.nextCursor === cursor) {
           nextCursorRef.current = null;
@@ -339,7 +434,7 @@ export function GalleryClient({ token }: { token: string }) {
         }
         return newAssets;
       } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') return [];
+        if (controller?.signal.aborted || (error instanceof Error && error.name === 'AbortError')) return [];
         if (error instanceof GalleryResponseError && error.status === 404) {
           clearGalleryToken(token);
           setLightboxKey(null);
@@ -349,14 +444,16 @@ export function GalleryClient({ token }: { token: string }) {
         }
         return [];
       } finally {
-        loadingMoreRef.current = false;
-        setLoadingMore(false);
-        loadMorePromiseRef.current = null;
+        if (abortControllerRef.current === controller) {
+          loadingMoreRef.current = false;
+          setLoadingMore(false);
+          loadMorePromiseRef.current = null;
+        }
       }
     })();
     loadMorePromiseRef.current = request;
     return request;
-  }, [appendPage, token]);
+  }, [appendPage, source, token]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -365,10 +462,13 @@ export function GalleryClient({ token }: { token: string }) {
     nextCursorRef.current = null;
     previewsRef.current = {};
     previewRequestsRef.current = {};
+    loadingMoreRef.current = false;
+    loadMorePromiseRef.current = null;
     setAssets([]);
     setPreviews({});
     setDownloads({});
     setNextCursor(null);
+    setLoadingMore(false);
     setLoadMoreError(false);
     setLightboxKey(null);
     setStatus('loading');
@@ -388,7 +488,7 @@ export function GalleryClient({ token }: { token: string }) {
           // Per-tab deduplication is unavailable; count this open independently.
         }
 
-        const page = await fetchGalleryPage(token, null, controller.signal, sessionId);
+        const page = await fetchGalleryPage(token, source, null, controller.signal, sessionId);
         if (controller.signal.aborted) return;
         storeGalleryToken(token);
         appendPage(page, true);
@@ -405,7 +505,7 @@ export function GalleryClient({ token }: { token: string }) {
       controller.abort();
       if (abortControllerRef.current === controller) abortControllerRef.current = null;
     };
-  }, [appendPage, token]);
+  }, [appendPage, source, token]);
 
   useEffect(() => {
     if (status !== 'ready') return;
@@ -427,6 +527,10 @@ export function GalleryClient({ token }: { token: string }) {
   const photoAssets = useMemo(
     () => assets.filter((asset) => asset.media_type === 'photo'),
     [assets],
+  );
+  const photoIndexByKey = useMemo(
+    () => new Map(photoAssets.map((photo, index) => [photo.asset_key, index] as const)),
+    [photoAssets],
   );
   const lightboxAsset = lightboxKey
     ? photoAssets.find((asset) => asset.asset_key === lightboxKey) ?? null
@@ -545,33 +649,72 @@ export function GalleryClient({ token }: { token: string }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [closeLightbox, lightboxKey, moveLightbox]);
 
+  const filterControls = (
+    <div className="mb-8 flex flex-wrap justify-center gap-2" role="group" aria-label="Filter the gallery by source">
+      {SOURCE_FILTERS.map((option) => (
+        <button
+          key={option.source}
+          type="button"
+          onClick={() => {
+            if (source === option.source) return;
+            setSource(option.source);
+            setStatus('loading');
+          }}
+          aria-pressed={source === option.source}
+          className={`rounded-full border px-4 py-2 text-xs uppercase tracking-[0.14em] focus:outline-none focus:ring-2 focus:ring-mauve/50 ${
+            source === option.source
+              ? 'border-mauve bg-mauve text-white'
+              : 'border-stone bg-white/80 text-charcoal hover:bg-stone/20'
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+  const emptyMessage = source === 'all'
+    ? 'The event gallery is ready for its first published memories.'
+    : source === 'professional'
+      ? 'No professional photos have been published yet.'
+      : 'No table-camera photos have been published yet.';
+
   if (status === 'loading') {
     return (
-      <p role="status" aria-live="polite" className="rounded-2xl border border-stone bg-white/80 p-8 text-center text-sm text-muted">
-        Loading the event gallery…
-      </p>
+      <>
+        {filterControls}
+        <p role="status" aria-live="polite" className="rounded-2xl border border-stone bg-white/80 p-8 text-center text-sm text-muted">
+          Loading the event gallery…
+        </p>
+      </>
     );
   }
 
   if (status === 'error') {
     return (
-      <p role="alert" className="rounded-2xl border border-red-200 bg-red-50/80 p-8 text-center text-sm text-red-700">
-        This Gallery link is unavailable. Check the link and try again.
-      </p>
+      <>
+        {filterControls}
+        <p role="alert" className="rounded-2xl border border-red-200 bg-red-50/80 p-8 text-center text-sm text-red-700">
+          This Gallery link is unavailable. Check the link and try again.
+        </p>
+      </>
     );
   }
 
   if (assets.length === 0) {
     return (
-      <p className="rounded-2xl border border-stone bg-white/80 p-8 text-center text-sm text-muted">
-        The event gallery is ready for its first published memories.
-      </p>
+      <>
+        {filterControls}
+        <p className="rounded-2xl border border-stone bg-white/80 p-8 text-center text-sm text-muted">
+          {emptyMessage}
+        </p>
+      </>
     );
   }
 
   return (
     <>
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-label="Published event gallery assets">
+      {filterControls}
+      <div className="grid grid-cols-2 gap-5 md:grid-cols-3 xl:grid-cols-4" aria-label="Published event gallery assets">
         {assets.map((asset) => {
           const preview = previews[asset.asset_key] ?? { status: 'idle' as const };
           const downloadState = downloads[asset.asset_key];
@@ -581,24 +724,23 @@ export function GalleryClient({ token }: { token: string }) {
                 key={asset.asset_key}
                 asset={asset}
                 downloadState={downloadState}
-                onDownload={() => void download(asset.asset_key)}
-                onPreviewError={() => updatePreview(asset.asset_key, { status: 'unsupported' })}
+                onDownload={download}
+                onPreviewError={markVideoPreviewUnsupported}
                 preview={preview}
               />
             );
           }
 
-          const photoIndex = photoAssets.findIndex((photo) => photo.asset_key === asset.asset_key);
+          const photoIndex = photoIndexByKey.get(asset.asset_key) ?? 0;
           return (
             <LazyPhotoCard
               key={asset.asset_key}
               asset={asset}
               index={photoIndex}
-              preview={preview}
+              previewUrl={asset.preview_url}
               total={photoAssets.length}
-              onOpen={() => openLightbox(asset.asset_key)}
-              onPreviewError={() => updatePreview(asset.asset_key, { status: 'error' })}
-              onVisible={() => void loadPreview(asset.asset_key)}
+              onOpen={openLightbox}
+              onRefreshPreview={refreshThumbnailUrl}
             />
           );
         })}

@@ -184,9 +184,9 @@ function isModerationAssetKey(value: FormDataEntryValue | null): value is string
   return typeof value === 'string' && /^[A-Za-z0-9_-]{16,256}$/.test(value);
 }
 
-async function cleanupGalleryAsset(assetId: string, storageKey: string): Promise<boolean> {
+async function cleanupGalleryAsset(assetId: string, storageKey: string, thumbnailKey: string | null): Promise<boolean> {
   try {
-    await del(storageKey);
+    await del([storageKey, thumbnailKey].filter((key): key is string => Boolean(key)));
     await sql`UPDATE gallery_assets SET cleanup_error = NULL WHERE id = ${assetId}`;
     return true;
   } catch (error) {
@@ -202,7 +202,7 @@ async function cleanupGalleryAsset(assetId: string, storageKey: string): Promise
 
 async function moderateGalleryAsset(action: ModerationAction, assetKey: string): Promise<ModerationResult> {
   const rows = await sql`
-    SELECT id, storage_key, moderation_status, cleanup_error
+    SELECT id, storage_key, thumbnail_key, moderation_status, cleanup_error
     FROM gallery_assets
     WHERE public_key = ${assetKey}
     LIMIT 1
@@ -213,6 +213,7 @@ async function moderateGalleryAsset(action: ModerationAction, assetKey: string):
   const id = String(asset.id);
   const status = String(asset.moderation_status);
   const storageKey = String(asset.storage_key);
+  const thumbnailKey = asset.thumbnail_key ? String(asset.thumbnail_key) : null;
 
   if (action === 'publish_gallery_asset') {
     if (status === 'published') return 'already_published';
@@ -241,7 +242,7 @@ async function moderateGalleryAsset(action: ModerationAction, assetKey: string):
 
   if (action === 'reject_gallery_asset') {
     if (status === 'rejected') {
-      if (asset.cleanup_error) return (await cleanupGalleryAsset(id, storageKey)) ? 'already_rejected' : 'cleanup_failed';
+      if (asset.cleanup_error) return (await cleanupGalleryAsset(id, storageKey, thumbnailKey)) ? 'already_rejected' : 'cleanup_failed';
       return 'already_rejected';
     }
     if (status !== 'pending') return 'invalid_transition';
@@ -264,11 +265,11 @@ async function moderateGalleryAsset(action: ModerationAction, assetKey: string):
       return current[0]?.moderation_status === 'rejected' ? 'already_rejected' : 'invalid_transition';
     }
 
-    return (await cleanupGalleryAsset(id, storageKey)) ? 'rejected' : 'cleanup_failed';
+    return (await cleanupGalleryAsset(id, storageKey, thumbnailKey)) ? 'rejected' : 'cleanup_failed';
   }
 
   if (status === 'removed') {
-    if (asset.cleanup_error) return (await cleanupGalleryAsset(id, storageKey)) ? 'already_removed' : 'cleanup_failed';
+    if (asset.cleanup_error) return (await cleanupGalleryAsset(id, storageKey, thumbnailKey)) ? 'already_removed' : 'cleanup_failed';
     return 'already_removed';
   }
   if (status !== 'published') return 'invalid_transition';
@@ -291,7 +292,7 @@ async function moderateGalleryAsset(action: ModerationAction, assetKey: string):
     return current[0]?.moderation_status === 'removed' ? 'already_removed' : 'invalid_transition';
   }
 
-  return (await cleanupGalleryAsset(id, storageKey)) ? 'removed' : 'cleanup_failed';
+  return (await cleanupGalleryAsset(id, storageKey, thumbnailKey)) ? 'removed' : 'cleanup_failed';
 }
 
 export async function GET(request: NextRequest) {

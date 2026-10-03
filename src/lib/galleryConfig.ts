@@ -27,6 +27,16 @@ export const UPLOAD_ALLOWED_CONTENT_TYPES = [
 ] as const;
 
 export type GalleryMediaType = 'photo' | 'video';
+export type GalleryPhotoSource = 'professional' | 'guest';
+export type GallerySourceFilter = 'all' | GalleryPhotoSource;
+
+export function isGalleryPhotoSource(value: unknown): value is GalleryPhotoSource {
+  return value === 'professional' || value === 'guest';
+}
+
+export function isGallerySourceFilter(value: unknown): value is GallerySourceFilter {
+  return value === 'all' || isGalleryPhotoSource(value);
+}
 
 export function isGalleryToken(value: unknown): value is string {
   return typeof value === 'string' && /^[A-Za-z0-9_-]{32,256}$/.test(value);

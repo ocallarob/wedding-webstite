@@ -26,6 +26,7 @@ function errorResponse(error: string, status: number) {
 export async function GET(request: NextRequest, context: RouteContext) {
   const token = request.nextUrl.searchParams.get('token');
   const download = request.nextUrl.searchParams.get('download') === '1';
+  const preview = request.nextUrl.searchParams.get('preview') === '1' && !download;
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
 
   if (!isGalleryToken(token)) {
@@ -40,7 +41,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
   if (!householdId) return errorResponse('Invalid Gallery link', 404);
 
   const rows = await sql`
-    SELECT id, storage_key
+    SELECT
+      id,
+      CASE
+        WHEN ${preview} THEN COALESCE(thumbnail_key, storage_key)
+        ELSE storage_key
+      END AS storage_key
     FROM gallery_assets
     WHERE public_key = ${context.params.assetKey}
       AND moderation_status = 'published'
@@ -51,7 +57,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   if (!asset) return errorResponse('Asset unavailable', 404);
 
   try {
-    const signed = await createGallerySignedUrl(String(asset.storage_key), { download });
+    const signed = await createGallerySignedUrl(String(asset.storage_key), { download, useCache: preview });
     if (download) await recordGalleryDownloadRequest(householdId, String(asset.id));
     return NextResponse.json(
       { url: signed.url, expires_at: signed.expiresAt.toISOString() },

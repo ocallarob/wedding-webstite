@@ -42,6 +42,14 @@ describe('gallery viewer boundary', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mocks.checkRateLimit.mockResolvedValue(true);
+    mocks.issueSignedToken.mockResolvedValue({
+      delegationToken: 'delegation',
+      clientSigningToken: 'signing',
+      validUntil: Date.now() + 300_000,
+    });
+    mocks.presignUrl.mockResolvedValue({
+      presignedUrl: 'https://store.private.blob.vercel-storage.com/preview.webp?signature=1',
+    });
   });
 
   it('returns only published assets for a valid Gallery link', async () => {
@@ -51,6 +59,9 @@ describe('gallery viewer boundary', () => {
       {
         public_key: 'published-photo',
         media_type: 'photo',
+        photo_source: 'guest',
+        storage_key: 'gallery/published-photo.jpg',
+        thumbnail_key: 'gallery/published-photo.preview.webp',
         content_type: 'image/jpeg',
         size_bytes: '2048',
         display_name: 'Published photo.jpg',
@@ -60,6 +71,7 @@ describe('gallery viewer boundary', () => {
       {
         public_key: 'pending-photo',
         media_type: 'photo',
+        photo_source: 'guest',
         content_type: 'image/jpeg',
         size_bytes: '2048',
         display_name: 'Pending photo.jpg',
@@ -69,6 +81,7 @@ describe('gallery viewer boundary', () => {
       {
         public_key: 'rejected-photo',
         media_type: 'photo',
+        photo_source: 'guest',
         content_type: 'image/jpeg',
         size_bytes: '2048',
         display_name: 'Rejected photo.jpg',
@@ -78,6 +91,7 @@ describe('gallery viewer boundary', () => {
       {
         public_key: 'removed-photo',
         media_type: 'photo',
+        photo_source: 'guest',
         content_type: 'image/jpeg',
         size_bytes: '2048',
         display_name: 'Removed photo.jpg',
@@ -94,15 +108,17 @@ describe('gallery viewer boundary', () => {
       {
         asset_key: 'published-photo',
         media_type: 'photo',
+        photo_source: 'guest',
         content_type: 'image/jpeg',
         size_bytes: 2048,
         display_name: 'Published photo.jpg',
         created_at: '2026-09-19T12:00:00.000Z',
+        preview_url: 'https://store.private.blob.vercel-storage.com/preview.webp?signature=1',
       },
     ]);
     expect(body.assets[0]).not.toHaveProperty('storage_key');
+    expect(body.assets[0]).not.toHaveProperty('thumbnail_key');
   });
-
   it('rejects missing and malformed Gallery links', async () => {
     for (const path of ['/api/gallery', '/api/gallery?token=malformed']) {
       const response = await listGallery(request(path));
@@ -165,31 +181,38 @@ describe('gallery viewer boundary', () => {
       expect.anything(),
       expect.objectContaining({ access: 'private', operation: 'get', pathname: 'gallery/published-photo.jpg' }),
     );
+    expect(mocks.presignUrl).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ useCache: false }),
+    );
     const activityCall = mocks.sql.mock.calls[2] as unknown[];
     const activityQuery = (activityCall[0] as TemplateStringsArray).join('');
     expect(activityQuery).toContain("'download_request'");
     expect(activityCall.slice(1)).toEqual([householdId, assetId]);
   });
 
-  it('does not count automatically issued preview URLs as download requests', async () => {
+  it('refreshes a preview URL from the thumbnail without counting a download request', async () => {
     mocks.sql
       .mockResolvedValueOnce([{ household_id: householdId }])
-      .mockResolvedValueOnce([{ id: assetId, storage_key: 'gallery/published-photo.jpg' }]);
-    mocks.issueSignedToken.mockResolvedValue({
-      delegationToken: 'delegation',
-      clientSigningToken: 'signing',
-      validUntil: Date.now() + 300_000,
-    });
-    mocks.presignUrl.mockResolvedValue({
-      presignedUrl: 'https://store.private.blob.vercel-storage.com/gallery/published-photo.jpg?signature=1',
-    });
+      .mockResolvedValueOnce([{ id: assetId, storage_key: 'gallery/published-photo.preview.webp' }]);
 
     const response = await getAssetUrl(
-      request(`/api/gallery/assets/published-photo/url?token=${galleryToken}`),
+      request(`/api/gallery/assets/published-photo/url?token=${galleryToken}&preview=1`),
       { params: { assetKey: 'published-photo' } },
     );
 
     expect(response.status).toBe(200);
+    expect(mocks.issueSignedToken).toHaveBeenCalledWith(expect.objectContaining({
+      pathname: 'gallery/published-photo.preview.webp',
+      operations: ['get'],
+    }));
+    expect(mocks.presignUrl).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ pathname: 'gallery/published-photo.preview.webp', useCache: true }),
+    );
+    const assetQuery = mocks.sql.mock.calls[1] as unknown[];
+    expect((assetQuery[0] as TemplateStringsArray).join('')).toContain('COALESCE(thumbnail_key, storage_key)');
+    expect(assetQuery).toContain(true);
     expect(mocks.sql).toHaveBeenCalledTimes(2);
   });
 
@@ -286,11 +309,14 @@ describe('gallery viewer boundary', () => {
 
   it('paginates published assets and records only the first open in a tab session', async () => {
     const tabSessionId = '123e4567-e89b-12d3-a456-426614174000';
-    const pagedAssets = Array.from({ length: 25 }, (_, index) => ({
+    const pagedAssets = Array.from({ length: 49 }, (_, index) => ({
       public_key: `published-photo-${index}`,
       media_type: 'photo',
+      photo_source: 'guest',
       content_type: 'image/jpeg',
       size_bytes: '2048',
+      storage_key: `gallery/published-photo-${index}.jpg`,
+      thumbnail_key: `gallery/published-photo-${index}.preview.webp`,
       display_name: `Published photo ${index}.jpg`,
       created_at: new Date(Date.parse('2026-09-19T12:00:00.000Z') + index * 60_000).toISOString(),
       moderation_status: 'published',
@@ -307,12 +333,22 @@ describe('gallery viewer boundary', () => {
     const firstQueryText = (firstQuery[0] as TemplateStringsArray).join('');
 
     expect(firstResponse.status).toBe(200);
-    expect(firstBody.assets).toHaveLength(24);
+    expect(firstBody.assets).toHaveLength(48);
+    expect(mocks.issueSignedToken).toHaveBeenCalledTimes(48);
+    expect(mocks.presignUrl).toHaveBeenCalledTimes(48);
+    expect(mocks.issueSignedToken).toHaveBeenCalledWith(expect.objectContaining({
+      pathname: 'gallery/published-photo-0.preview.webp',
+    }));
+    expect(mocks.presignUrl).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ useCache: true }),
+    );
     expect(firstBody.next_cursor).toEqual(expect.any(String));
     expect(firstQueryText).toContain('ORDER BY created_at ASC, public_key ASC');
     expect(JSON.parse(Buffer.from(firstBody.next_cursor, 'base64url').toString('utf8'))).toEqual({
-      createdAt: pagedAssets[23].created_at,
-      assetKey: 'published-photo-23',
+      createdAt: pagedAssets[47].created_at,
+      assetKey: 'published-photo-47',
+      source: 'all',
     });
     expect(mocks.sql).toHaveBeenCalledTimes(3);
     const openCall = mocks.sql.mock.calls[2] as unknown[];
@@ -325,7 +361,7 @@ describe('gallery viewer boundary', () => {
     mocks.checkRateLimit.mockResolvedValue(true);
     mocks.sql
       .mockResolvedValueOnce([{ household_id: householdId }])
-      .mockResolvedValueOnce(pagedAssets.slice(24));
+      .mockResolvedValueOnce(pagedAssets.slice(48));
 
     const secondResponse = await listGallery(
       request(`/api/gallery?token=${galleryToken}&cursor=${firstBody.next_cursor}`, {
@@ -338,12 +374,65 @@ describe('gallery viewer boundary', () => {
 
     expect(secondResponse.status).toBe(200);
     expect(secondBody.assets).toHaveLength(1);
-    expect(secondBody.assets[0].asset_key).toBe('published-photo-24');
+    expect(secondBody.assets[0].asset_key).toBe('published-photo-48');
     expect(secondBody.next_cursor).toBeNull();
     expect(secondQueryText).toContain('AND (created_at, public_key) > (');
-    expect(secondQuery).toContain(pagedAssets[23].created_at);
-    expect(secondQuery).toContain('published-photo-23');
+    expect(secondQuery).toContain(pagedAssets[47].created_at);
+    expect(secondQuery).toContain('published-photo-47');
     expect(mocks.sql).toHaveBeenCalledTimes(2);
+  });
+  it('filters gallery pages by source and rejects cursors from another source', async () => {
+    const professionalAssets = Array.from({ length: 49 }, (_, index) => ({
+      public_key: `professional-photo-${index}`,
+      media_type: 'photo',
+      photo_source: 'professional',
+      content_type: 'image/jpeg',
+      size_bytes: '2048',
+      storage_key: `gallery/professional-photo-${index}.jpg`,
+      thumbnail_key: `gallery/professional-photo-${index}.preview.webp`,
+      display_name: `Professional photo ${index}.jpg`,
+      created_at: new Date(Date.parse('2026-09-19T12:00:00.000Z') + index * 60_000).toISOString(),
+      moderation_status: 'published',
+    }));
+    mocks.sql
+      .mockResolvedValueOnce([{ household_id: householdId }])
+      .mockResolvedValueOnce(professionalAssets);
+
+    const response = await listGallery(request(`/api/gallery?token=${galleryToken}&source=professional`));
+    const body = await response.json();
+    const listQuery = mocks.sql.mock.calls[1] as unknown[];
+    const queryText = (listQuery[0] as TemplateStringsArray).join('');
+
+    expect(response.status).toBe(200);
+    expect(body.assets).toHaveLength(48);
+    expect(body.assets[0].photo_source).toBe('professional');
+    expect(queryText).toContain('photo_source');
+    expect(listQuery).toContain('professional');
+    expect(JSON.parse(Buffer.from(body.next_cursor, 'base64url').toString('utf8'))).toEqual({
+      createdAt: professionalAssets[47].created_at,
+      assetKey: 'professional-photo-47',
+      source: 'professional',
+    });
+
+    vi.clearAllMocks();
+    mocks.checkRateLimit.mockResolvedValue(true);
+    mocks.sql.mockResolvedValueOnce([{ household_id: householdId }]);
+    const mismatchedCursor = await listGallery(
+      request(`/api/gallery?token=${galleryToken}&source=guest&cursor=${body.next_cursor}`),
+    );
+
+    expect(mismatchedCursor.status).toBe(400);
+    expect(await mismatchedCursor.json()).toEqual({ error: 'Invalid gallery cursor' });
+    expect(mocks.sql).toHaveBeenCalledTimes(1);
+
+    vi.clearAllMocks();
+    mocks.checkRateLimit.mockResolvedValue(true);
+    mocks.sql.mockResolvedValueOnce([{ household_id: householdId }]);
+    const invalidSource = await listGallery(request(`/api/gallery?token=${galleryToken}&source=amateur`));
+
+    expect(invalidSource.status).toBe(400);
+    expect(await invalidSource.json()).toEqual({ error: 'Invalid gallery source' });
+    expect(mocks.sql).toHaveBeenCalledTimes(1);
   });
 
 

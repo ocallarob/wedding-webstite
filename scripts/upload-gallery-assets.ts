@@ -2,7 +2,9 @@ import { createHash, randomBytes } from 'node:crypto';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { basename, extname, resolve } from 'node:path';
 import { del, put } from '@vercel/blob';
+import sharp from 'sharp';
 import { sql } from '../src/lib/db';
+import { isGalleryPhotoSource, type GalleryPhotoSource } from '../src/lib/galleryConfig';
 import { validateUploadAsset } from '../src/lib/uploadValidation';
 
 const CONTENT_TYPES: Record<string, string> = {
@@ -20,7 +22,7 @@ const CONTENT_TYPES: Record<string, string> = {
 type Options = {
   householdId: string | null;
   paths: string[];
-  publish: boolean;
+  source: GalleryPhotoSource;
 };
 
 type ImportResult =
@@ -30,31 +32,33 @@ type ImportResult =
   | { status: 'failed'; filePath: string; reason: string };
 
 function printUsage(): void {
-  console.log(`Usage: pnpm gallery:upload -- [options] <file-or-directory> [...]
+  console.log(`Usage: pnpm gallery:upload -- --source <professional|guest> [options] <file-or-directory> [...]
 
 Options:
-  --publish                 Make imported assets visible immediately.
+  --source <value>         Required: professional or guest.
   --household-id <uuid>    Associate imported assets with a household.
 
-Without --publish, assets are inserted as pending and require dashboard moderation.
-Directories are scanned recursively. Unsupported files are skipped.`);
+CLI-imported assets are published immediately. Directories are scanned recursively. Unsupported files are skipped.`);
 }
 
 function parseOptions(args: string[]): Options {
   const paths: string[] = [];
   let householdId: string | null = null;
-  let publish = false;
+  let source: GalleryPhotoSource | null = null;
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === '--') continue;
+    if (arg === '--source' || arg.startsWith('--source=')) {
+      const value = arg === '--source' ? args[index + 1] : arg.slice('--source='.length);
+      if (!isGalleryPhotoSource(value)) throw new Error('--source must be professional or guest.');
+      source = value;
+      if (arg === '--source') index += 1;
+      continue;
+    }
     if (arg === '--help' || arg === '-h') {
       printUsage();
       process.exit(0);
-    }
-    if (arg === '--publish') {
-      publish = true;
-      continue;
     }
     if (arg === '--household-id') {
       const value = args[index + 1];
@@ -72,11 +76,12 @@ function parseOptions(args: string[]): Options {
   }
 
   if (paths.length === 0) throw new Error('Provide at least one file or directory.');
+  if (!source) throw new Error('--source is required (professional or guest).');
   if (householdId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(householdId)) {
     throw new Error('--household-id must be a UUID.');
   }
 
-  return { householdId, paths, publish };
+  return { householdId, paths, source };
 }
 
 async function collectFiles(inputPath: string): Promise<string[]> {
@@ -103,6 +108,42 @@ function safeName(name: string): string {
 function errorMessage(error: unknown): string {
   return error instanceof Error && error.message ? error.message : String(error);
 }
+async function createGalleryThumbnail(pathname: string, body: Buffer): Promise<string | null> {
+  try {
+    const thumbnail = await sharp(body)
+      .rotate()
+      .resize({ width: 800, withoutEnlargement: true })
+      .webp({ quality: 75 })
+      .toBuffer();
+    const blob = await put(pathname, thumbnail, {
+      access: 'private',
+      allowOverwrite: true,
+      contentType: 'image/webp',
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+    });
+    return blob.pathname;
+  } catch (error) {
+    console.warn(`Using the original for preview of ${pathname}: ${errorMessage(error)}`);
+    return null;
+  }
+}
+
+async function updateExistingGalleryAsset(id: string, source: GalleryPhotoSource, thumbnailKey: string | null): Promise<void> {
+  await sql`
+    UPDATE gallery_assets
+    SET photo_source = ${source},
+        thumbnail_key = COALESCE(thumbnail_key, ${thumbnailKey}),
+        moderation_status = CASE
+          WHEN moderation_status = 'pending' THEN 'published'
+          ELSE moderation_status
+        END,
+        published_at = CASE
+          WHEN moderation_status = 'pending' THEN COALESCE(published_at, now())
+          ELSE published_at
+        END
+    WHERE id = ${id}
+  `;
+}
 
 async function importAsset(filePath: string, options: Options): Promise<ImportResult> {
   const displayName = basename(filePath);
@@ -117,13 +158,27 @@ async function importAsset(filePath: string, options: Options): Promise<ImportRe
     const body = await readFile(filePath);
     const digest = createHash('sha256').update(body).digest('hex');
     const storagePath = `cli-imports/${digest}-${safeName(displayName)}`;
+    const thumbnailPath = `${storagePath}.preview.webp`;
     const existing = await sql`
-      SELECT public_key
+      SELECT id, public_key, photo_source, thumbnail_key, moderation_status
       FROM gallery_assets
       WHERE storage_key = ${storagePath}
       LIMIT 1
     `;
-    if (existing[0]) return { status: 'existing', filePath, assetKey: String(existing[0].public_key) };
+    if (existing[0]) {
+      const existingThumbnailKey = existing[0].thumbnail_key ? String(existing[0].thumbnail_key) : null;
+      const thumbnailKey = validation.asset.mediaType === 'photo' && !existingThumbnailKey
+        ? await createGalleryThumbnail(thumbnailPath, body)
+        : existingThumbnailKey;
+      if (
+        existing[0].photo_source !== options.source
+        || thumbnailKey !== existingThumbnailKey
+        || existing[0].moderation_status === 'pending'
+      ) {
+        await updateExistingGalleryAsset(String(existing[0].id), options.source, thumbnailKey);
+      }
+      return { status: 'existing', filePath, assetKey: String(existing[0].public_key) };
+    }
 
     const blob = await put(storagePath, body, {
       access: 'private',
@@ -131,9 +186,12 @@ async function importAsset(filePath: string, options: Options): Promise<ImportRe
       contentType,
       token: process.env.BLOB_READ_WRITE_TOKEN,
     });
+    const thumbnailKey = validation.asset.mediaType === 'photo'
+      ? await createGalleryThumbnail(thumbnailPath, body)
+      : null;
     const publicKey = `asset_${randomBytes(24).toString('base64url')}`;
-    const moderationStatus = options.publish ? 'published' : 'pending';
-    const publishedAt = options.publish ? new Date().toISOString() : null;
+    const moderationStatus = 'published';
+    const publishedAt = new Date().toISOString();
 
     try {
       const inserted = await sql`
@@ -141,7 +199,9 @@ async function importAsset(filePath: string, options: Options): Promise<ImportRe
           public_key,
           household_id,
           storage_key,
+          thumbnail_key,
           media_type,
+          photo_source,
           content_type,
           size_bytes,
           display_name,
@@ -152,7 +212,9 @@ async function importAsset(filePath: string, options: Options): Promise<ImportRe
           ${publicKey},
           ${options.householdId},
           ${blob.pathname},
+          ${thumbnailKey},
           ${validation.asset.mediaType},
+          ${options.source},
           ${validation.asset.contentType},
           ${validation.asset.sizeBytes},
           ${validation.asset.displayName},
@@ -164,15 +226,21 @@ async function importAsset(filePath: string, options: Options): Promise<ImportRe
       `;
       if (inserted.length === 0) {
         const duplicate = await sql`
-          SELECT public_key
+          SELECT id, public_key
           FROM gallery_assets
           WHERE storage_key = ${blob.pathname}
           LIMIT 1
         `;
+        if (duplicate[0]) {
+          await updateExistingGalleryAsset(String(duplicate[0].id), options.source, thumbnailKey);
+        }
         return { status: 'existing', filePath, assetKey: String(duplicate[0]?.public_key ?? publicKey) };
       }
     } catch (error) {
-      await del(blob.pathname, { token: process.env.BLOB_READ_WRITE_TOKEN });
+      await Promise.allSettled([
+        del(blob.pathname, { token: process.env.BLOB_READ_WRITE_TOKEN }),
+        ...(thumbnailKey ? [del(thumbnailKey, { token: process.env.BLOB_READ_WRITE_TOKEN })] : []),
+      ]);
       throw error;
     }
 
@@ -188,6 +256,9 @@ async function main(): Promise<void> {
   }
 
   const options = parseOptions(process.argv.slice(2));
+  if (!process.env.BLOB_READ_WRITE_TOKEN && process.env.VERCEL_OIDC_TOKEN && !process.env.BLOB_STORE_ID) {
+    throw new Error('BLOB_STORE_ID is required when uploading with VERCEL_OIDC_TOKEN.');
+  }
   const files = (await Promise.all(options.paths.map(collectFiles))).flat();
   const uniqueFiles = [...new Set(files)];
   if (uniqueFiles.length === 0) throw new Error('No files found.');
