@@ -486,6 +486,18 @@ export default async function DashboardPage({ searchParams }: Props) {
           Gallery announcement action was not authorized.
         </p>
       )}
+      {announcement === 'test_sent' && (
+        <p role="status" className="rounded-xl border border-stone bg-white/80 px-4 py-3 text-center text-sm text-charcoal">
+          Test announcement accepted for delivery. No household announcement status was changed.
+        </p>
+      )}
+      {(announcement === 'test_failed' || announcement === 'test_invalid') && (
+        <p role="alert" className="rounded-xl border border-red-200 bg-red-50/80 px-4 py-3 text-center text-sm text-red-700">
+          {announcement === 'test_invalid'
+            ? 'Choose an eligible household and enter a valid single recipient email.'
+            : 'Test announcement could not be confirmed as sent. Check Resend before retrying.'}
+        </p>
+      )}
 
       <section className="space-y-4 rounded-2xl border border-stone bg-white/60 p-5 sm:p-6" aria-labelledby="gallery-announcement-heading">
         <header>
@@ -508,6 +520,35 @@ export default async function DashboardPage({ searchParams }: Props) {
         <p className="text-xs text-muted">
           Durable status: {galleryAnnouncementSentCount} sent, {galleryAnnouncementFailedCount} failed and retryable.
         </p>
+        <form action="/api/dashboard" method="POST" className="space-y-3 border-t border-stone pt-4">
+          <input type="hidden" name="action" value="send_gallery_test" />
+          <input type="hidden" name="csrf_token" value={csrfToken} />
+          <h3 className="font-heading text-xl text-charcoal">Send test to…</h3>
+          <div className="flex flex-wrap items-end gap-4">
+            <label className="block space-y-1 text-sm">
+              <span>Recipient email</span>
+              <input type="email" name="to" required maxLength={254} placeholder="Your email address" className="block w-full rounded-xl border border-stone bg-white px-3 py-2" />
+            </label>
+            <label className="block space-y-1 text-sm">
+              <span>Household to preview</span>
+              <select name="household_id" required defaultValue="" className="block w-full rounded-xl border border-stone bg-white px-3 py-2">
+                <option value="" disabled>Choose a household</option>
+                {galleryEligibleHouseholds.map((row) => (
+                  <option key={row.id} value={row.id}>
+                    {row.label || row.members.map((member) => member.full_name).join(' & ') || row.contact_email}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="submit" disabled={galleryEligibleHouseholds.length === 0} className="btn btn-primary disabled:cursor-not-allowed disabled:opacity-50">
+              Send test announcement
+            </button>
+          </div>
+          <p className="text-xs text-muted">
+            Sends only to the email above, with a new Gallery link for the selected household.
+            Existing links and announcement status stay unchanged. Test opens and downloads count against that household.
+          </p>
+        </form>
       </section>
 
 
@@ -542,11 +583,11 @@ export default async function DashboardPage({ searchParams }: Props) {
         </p>
       )}
 
-      <section className="space-y-5 rounded-2xl border border-stone bg-white/60 p-5 sm:p-6" aria-labelledby="pending-gallery-assets-heading">
-        <header>
-          <h2 id="pending-gallery-assets-heading" className="font-heading text-3xl font-light text-charcoal">Pending gallery assets</h2>
-          <p className="mt-1 text-sm text-muted">Review media received for the gallery. Pending assets are not visible through the event gallery.</p>
-        </header>
+      <details className="space-y-5 rounded-2xl border border-stone bg-white/60 p-5 sm:p-6">
+        <summary className="cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mauve/50">
+          <h2 className="inline font-heading text-3xl font-light text-charcoal">Pending gallery assets</h2>
+        </summary>
+        <p className="text-sm text-muted">Review media received for the gallery. Pending assets are not visible through the event gallery.</p>
         {pendingAssets.length > 0 ? (
           <div className="grid gap-5 lg:grid-cols-2">
             {pendingAssets.map((asset) => <ModerationAssetCard key={asset.public_key} asset={asset} csrfToken={csrfToken} />)}
@@ -556,13 +597,13 @@ export default async function DashboardPage({ searchParams }: Props) {
             No gallery assets are waiting for review.
           </p>
         )}
-      </section>
+      </details>
 
-      <section className="space-y-5 rounded-2xl border border-stone bg-white/60 p-5 sm:p-6" aria-labelledby="published-assets-heading">
-        <header>
-          <h2 id="published-assets-heading" className="font-heading text-3xl font-light text-charcoal">Published assets</h2>
-          <p className="mt-1 text-sm text-muted">Remove a published asset to withdraw it from event gallery viewer responses.</p>
-        </header>
+      <details className="space-y-5 rounded-2xl border border-stone bg-white/60 p-5 sm:p-6">
+        <summary className="cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mauve/50">
+          <h2 className="inline font-heading text-3xl font-light text-charcoal">Published assets</h2>
+        </summary>
+        <p className="text-sm text-muted">Remove a published asset to withdraw it from event gallery viewer responses.</p>
         {publishedAssets.length > 0 ? (
           <div className="grid gap-5 lg:grid-cols-2">
             {publishedAssets.map((asset) => <ModerationAssetCard key={asset.public_key} asset={asset} csrfToken={csrfToken} />)}
@@ -572,7 +613,7 @@ export default async function DashboardPage({ searchParams }: Props) {
             No assets have been published yet.
           </p>
         )}
-      </section>
+      </details>
 
       {cleanupAssets.length > 0 ? (
         <section className="space-y-5 rounded-2xl border border-red-200 bg-red-50/30 p-5 sm:p-6" aria-labelledby="cleanup-required-heading">

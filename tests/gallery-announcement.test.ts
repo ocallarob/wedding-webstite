@@ -40,10 +40,12 @@ const expiresAt = new Date('2026-12-01T00:00:00.000Z');
 
 function dashboardRequest(
   action: string,
-  options: { authenticated?: boolean; origin?: string; csrf?: string } = {},
+  options: { authenticated?: boolean; origin?: string; csrf?: string; to?: string; householdId?: string } = {},
 ): NextRequest {
   const formData = new FormData();
   formData.set('action', action);
+  if (options.to !== undefined) formData.set('to', options.to);
+  if (options.householdId !== undefined) formData.set('household_id', options.householdId);
   const headers = new Headers({ origin: options.origin ?? 'http://localhost' });
 
   if (options.authenticated !== false) {
@@ -82,6 +84,72 @@ beforeEach(() => {
 });
 
 describe('Gallery announcement boundary', () => {
+  it('sends a test only to the supplied recipient without recording or claiming announcements', async () => {
+    const householdId = '123e4567-e89b-12d3-a456-426614174001';
+    mocks.sql.mockResolvedValueOnce([{ ...eligibleHousehold, id: householdId }]);
+    const response = await postDashboard(dashboardRequest('send_gallery_test', {
+      to: ' rob@example.com ',
+      householdId,
+    }));
+    expect(announcementLocation(response).searchParams.get('announcement')).toBe('test_sent');
+    expect(mocks.sendEmail).toHaveBeenCalledTimes(1);
+    const message = mocks.sendEmail.mock.calls[0][0];
+    expect(message.to).toBe('rob@example.com');
+    expect(message.subject).toMatch(/^\[Test\] /);
+    expect(message.html).toContain('gallery?token=gallery-token');
+    expect(message.html).toContain('Anne &amp; Brian');
+    expect(mocks.createGalleryCapability).toHaveBeenCalledWith(householdId);
+    expect(mocks.sql).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    { authenticated: false },
+    { origin: 'https://attacker.example' },
+    { csrf: 'invalid' },
+  ])('rejects unauthorized test sends: %j', async (options) => {
+    const response = await postDashboard(dashboardRequest('send_gallery_test', {
+      to: 'rob@example.com',
+      householdId: '123e4567-e89b-12d3-a456-426614174001',
+      ...options,
+    }));
+    expect(announcementLocation(response).searchParams.get('announcement')).toBe('unauthorized');
+    expect(mocks.sendEmail).not.toHaveBeenCalled();
+    expect(mocks.createGalleryCapability).not.toHaveBeenCalled();
+    expect(mocks.sql).not.toHaveBeenCalled();
+  });
+
+  it.each(['', 'invalid', 'one@example.com,two@example.com', 'one@example.com;two@example.com'])('rejects invalid test recipient %s', async (to) => {
+    const response = await postDashboard(dashboardRequest('send_gallery_test', {
+      to,
+      householdId: '123e4567-e89b-12d3-a456-426614174001',
+    }));
+    expect(announcementLocation(response).searchParams.get('announcement')).toBe('test_invalid');
+    expect(mocks.sendEmail).not.toHaveBeenCalled();
+    expect(mocks.sql).not.toHaveBeenCalled();
+  });
+
+  it('rejects an ineligible test household without issuing a link or sending', async () => {
+    mocks.sql.mockResolvedValueOnce([{ ...eligibleHousehold, members: [] }]);
+    const response = await postDashboard(dashboardRequest('send_gallery_test', {
+      to: 'rob@example.com',
+      householdId: '123e4567-e89b-12d3-a456-426614174001',
+    }));
+    expect(announcementLocation(response).searchParams.get('announcement')).toBe('test_invalid');
+    expect(mocks.createGalleryCapability).not.toHaveBeenCalled();
+    expect(mocks.sendEmail).not.toHaveBeenCalled();
+  });
+
+  it('reports a provider rejection without changing announcement status', async () => {
+    mocks.sql.mockResolvedValueOnce([eligibleHousehold]);
+    mocks.sendEmail.mockResolvedValueOnce({ data: null, error: { message: 'Rejected' } });
+    const response = await postDashboard(dashboardRequest('send_gallery_test', {
+      to: 'rob@example.com',
+      householdId: '123e4567-e89b-12d3-a456-426614174001',
+    }));
+    expect(announcementLocation(response).searchParams.get('announcement')).toBe('test_failed');
+    expect(mocks.sql).toHaveBeenCalledTimes(1);
+  });
+
   it('sends one distinct message to a Gallery-eligible household, records success, and skips it on rerun', async () => {
     mocks.sql
       .mockResolvedValueOnce([eligibleHousehold])

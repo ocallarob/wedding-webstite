@@ -145,9 +145,12 @@ Behavior:
   - send status
   - RSVP open tracking
   - manual, throttled Gallery announcement action with sent and retryable failed status
+  - single-recipient Gallery test announcement: enter your email and choose a household to preview; the subject is prefixed with `[Test]`
+  - collapsible Pending gallery assets and Published assets sections, closed by default
 
 Invitation and RSVP reminder email sending is disabled. The Gallery announcement is
 the separate post-wedding message; the preview route renders HTML only.
+Test announcements create an additional valid Gallery link for the selected household without rotating existing links or changing announcement sent/failure status. Opens and downloads from that link count against that household. The bulk-send button is not a test: it sends to all eligible, unsent households.
 
 Admin APIs:
 - `GET /api/dashboard` (`x-admin-secret` header auth)

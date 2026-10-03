@@ -46,7 +46,7 @@ function moderationRedirect(request: NextRequest, result: ModerationResult | 'un
 
 function galleryAnnouncementRedirect(
   request: NextRequest,
-  result: 'done' | 'failed' | 'unauthorized',
+  result: 'done' | 'failed' | 'unauthorized' | 'test_sent' | 'test_failed' | 'test_invalid',
   counts?: GalleryAnnouncementBatchResult,
 ) {
   const url = new URL('/dashboard', request.url);
@@ -367,6 +367,48 @@ export async function POST(request: NextRequest) {
 
   if (!adminSecret) {
     return NextResponse.redirect(new URL('/dashboard?error=missing_admin_secret', request.url));
+  }
+
+  if (action === 'send_gallery_test') {
+    if (!hasAdminAuth(request) || !isSameOriginRequest(request) || !csrfValid) {
+      return galleryAnnouncementRedirect(request, 'unauthorized');
+    }
+    const to = String(formData.get('to') ?? '').trim();
+    const householdId = formData.get('household_id');
+    if (to.length > 254 || !/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(to) || !isUuid(householdId)) {
+      return galleryAnnouncementRedirect(request, 'test_invalid');
+    }
+    try {
+      const rows = await sql`
+        SELECT h.label, h.contact_email,
+          json_agg(json_build_object(
+            'full_name', m.full_name,
+            'attending_day1', m.attending_day1,
+            'attending_day2', m.attending_day2
+          ) ORDER BY m.sort_order, m.created_at) AS members
+        FROM households h
+        JOIN household_members m ON m.household_id = h.id
+        WHERE h.id = ${householdId}::uuid
+        GROUP BY h.id
+      `;
+      const household = rows[0];
+      if (!household || !isGalleryAnnouncementEligible(household)) {
+        return galleryAnnouncementRedirect(request, 'test_invalid');
+      }
+      const capability = await createGalleryCapability(householdId);
+      const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? 'https://alannah-rob.ie').replace(/\/$/, '');
+      const galleryUrl = `${baseUrl}/gallery?token=${encodeURIComponent(capability.token)}`;
+      const result = await new Resend(process.env.RESEND_API_KEY).emails.send({
+        from: 'Alannah & Rob <hello@alannah-rob.ie>',
+        to,
+        subject: `[Test] ${buildGalleryAnnouncementSubject()}`,
+        html: buildGalleryAnnouncementEmailHtml(galleryAnnouncementDisplayName(household), galleryUrl, baseUrl),
+      });
+      if (result.error || !result.data?.id) return galleryAnnouncementRedirect(request, 'test_failed');
+      return galleryAnnouncementRedirect(request, 'test_sent');
+    } catch {
+      return galleryAnnouncementRedirect(request, 'test_failed');
+    }
   }
 
   if (action === 'send_gallery_announcements') {
