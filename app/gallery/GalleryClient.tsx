@@ -24,7 +24,7 @@ type GalleryAsset = {
 const SOURCE_FILTERS: { source: GallerySourceFilter; label: string }[] = [
   { source: 'all', label: 'All' },
   { source: 'professional', label: 'Professional' },
-  { source: 'guest', label: 'Table cameras' },
+  { source: 'guest', label: 'Guests' },
 ];
 
 type PreviewState =
@@ -676,7 +676,7 @@ export function GalleryClient({ token }: { token: string }) {
     ? 'The event gallery is ready for its first published memories.'
     : source === 'professional'
       ? 'No professional photos have been published yet.'
-      : 'No table-camera photos have been published yet.';
+      : 'No guest photos have been published yet.';
 
   if (status === 'loading') {
     return (
@@ -761,6 +761,13 @@ export function GalleryClient({ token }: { token: string }) {
       <div ref={loadMoreSentinelRef} className="min-h-8 pt-5 text-center text-sm text-muted" aria-live="polite">
         {loadingMore ? 'Loading more memories…' : null}
       </div>
+      <button
+        type="button"
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        className="fixed bottom-6 right-6 z-40 rounded-full border border-stone bg-ivory px-4 py-3 text-sm text-charcoal shadow-lg hover:bg-stone/20 focus:outline-none focus:ring-2 focus:ring-mauve/50"
+      >
+        Back to top ↑
+      </button>
 
       {lightboxAsset && (
         <div

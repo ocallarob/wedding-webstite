@@ -133,7 +133,7 @@ Behavior:
 
 
 - `/gallery?token=...`
-  Unlisted event gallery link. Viewers can switch between all assets, professional photos, and table-camera photos without creating separate galleries. The dashboard sends a distinct Gallery announcement with this link and asks recipients to send photographs or videos to one of us on WhatsApp.
+  Unlisted event gallery link. All displays blocks of up to 50 professional photos, then up to 50 guest photos, repeating while each source has photos; source filters preserve each source's upload order. The dashboard sends a distinct Gallery announcement with this link and asks recipients to send photographs or videos to one of us on WhatsApp.
 
 - `/gallery-announcement-preview`
   HTML-only preview of the Gallery announcement; it never sends email.

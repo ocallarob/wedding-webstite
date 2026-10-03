@@ -17,10 +17,11 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const GALLERY_PAGE_SIZE = 48;
+const GALLERY_SOURCE_BLOCK_SIZE = 50;
 
 type GalleryCursor = {
-  createdAt: string;
-  assetKey: string;
+  position: string;
+  photoSource: GalleryPhotoSource;
   source: GallerySourceFilter;
 };
 
@@ -30,25 +31,23 @@ function decodeGalleryCursor(value: string | null, source: GallerySourceFilter):
   try {
     const parsed = JSON.parse(Buffer.from(value, 'base64url').toString('utf8')) as Partial<GalleryCursor>;
     if (
-      typeof parsed.createdAt !== 'string'
-      || Number.isNaN(Date.parse(parsed.createdAt))
-      || typeof parsed.assetKey !== 'string'
-      || parsed.assetKey.length === 0
-      || parsed.assetKey.length > 256
+      typeof parsed.position !== 'string'
+      || !/^[1-9]\d{0,14}$/.test(parsed.position)
+      || (parsed.photoSource !== 'guest' && parsed.photoSource !== 'professional')
       || !isGallerySourceFilter(parsed.source)
       || parsed.source !== source
     ) {
       return null;
     }
 
-    return { createdAt: parsed.createdAt, assetKey: parsed.assetKey, source: parsed.source };
+    return { position: parsed.position, photoSource: parsed.photoSource, source: parsed.source };
   } catch {
     return null;
   }
 }
 
-function encodeGalleryCursor(createdAt: string, assetKey: string, source: GallerySourceFilter): string {
-  return Buffer.from(JSON.stringify({ createdAt, assetKey, source }), 'utf8').toString('base64url');
+function encodeGalleryCursor(position: string, photoSource: GalleryPhotoSource, source: GallerySourceFilter): string {
+  return Buffer.from(JSON.stringify({ position, photoSource, source }), 'utf8').toString('base64url');
 }
 
 export async function GET(request: NextRequest) {
@@ -92,68 +91,51 @@ export async function GET(request: NextRequest) {
   }
 
   const cursor = decodeGalleryCursor(cursorValue, source);
-  const rows = cursor
-    ? await sql`
-        SELECT
-          public_key,
-          media_type,
-          photo_source,
-          storage_key,
-          thumbnail_key,
-          content_type,
-          size_bytes,
-          display_name,
-          created_at,
-          created_at::text AS created_at_cursor,
-          moderation_status
-        FROM gallery_assets
-        WHERE moderation_status = 'published'
-          AND (${source} = 'all' OR photo_source = ${source})
-          AND (created_at, public_key) > (${cursor.createdAt}::timestamptz, ${cursor.assetKey})
-        ORDER BY created_at ASC, public_key ASC
-        LIMIT ${GALLERY_PAGE_SIZE + 1}
-      `
-    : await sql`
-        SELECT
-          public_key,
-          media_type,
-          photo_source,
-          content_type,
-          storage_key,
-          thumbnail_key,
-          size_bytes,
-          display_name,
-          created_at,
-          created_at::text AS created_at_cursor,
-          moderation_status
-        FROM gallery_assets
-        WHERE moderation_status = 'published'
-          AND (${source} = 'all' OR photo_source = ${source})
-        ORDER BY created_at ASC, public_key ASC
-        LIMIT ${GALLERY_PAGE_SIZE + 1}
-      `;
+  const rows = await sql`
+    WITH ranked AS (
+      SELECT
+        public_key,
+        media_type,
+        photo_source,
+        storage_key,
+        thumbnail_key,
+        content_type,
+        size_bytes,
+        display_name,
+        created_at,
+        moderation_status,
+        row_number() OVER (PARTITION BY photo_source ORDER BY created_at, public_key) AS position
+      FROM gallery_assets
+      WHERE moderation_status = 'published'
+        AND (${source} = 'all' OR photo_source = ${source})
+    )
+    SELECT * FROM ranked
+    WHERE ${cursor?.position ?? '0'}::bigint = 0
+       OR ((position - 1) / ${GALLERY_SOURCE_BLOCK_SIZE}, CASE photo_source WHEN 'professional' THEN 0 ELSE 1 END, position)
+          > (((${cursor?.position ?? '0'}::bigint - 1) / ${GALLERY_SOURCE_BLOCK_SIZE}), ${cursor?.photoSource === 'professional' ? 0 : 1}, ${cursor?.position ?? '0'}::bigint)
+    ORDER BY (position - 1) / ${GALLERY_SOURCE_BLOCK_SIZE}, CASE photo_source WHEN 'professional' THEN 0 ELSE 1 END, position
+    LIMIT ${GALLERY_PAGE_SIZE + 1}
+  `;
 
-  const assets = rows
-    .filter((row) => row.moderation_status === 'published')
-    .map((row) => ({
-      asset_key: String(row.public_key),
-      media_type: row.media_type as GalleryMediaType,
-      photo_source: row.photo_source as GalleryPhotoSource,
-      preview_storage_key: String(row.thumbnail_key ?? row.storage_key),
-      content_type: String(row.content_type),
-      size_bytes: Number(row.size_bytes),
-      display_name: String(row.display_name),
-      created_at: row.created_at,
-      created_at_cursor: String(row.created_at_cursor ?? row.created_at),
-    }));
+  const assets = rows.filter((row) => row.moderation_status === 'published').map((row) => ({
+    asset_key: String(row.public_key),
+    media_type: row.media_type as GalleryMediaType,
+    photo_source: row.photo_source as GalleryPhotoSource,
+    preview_storage_key: String(row.thumbnail_key ?? row.storage_key),
+    content_type: String(row.content_type),
+    size_bytes: Number(row.size_bytes),
+    display_name: String(row.display_name),
+    created_at: row.created_at,
+    position: String(row.position),
+  }));
   const hasMore = assets.length > GALLERY_PAGE_SIZE;
   const pageAssets = hasMore ? assets.slice(0, GALLERY_PAGE_SIZE) : assets;
   const lastAsset = pageAssets[pageAssets.length - 1];
   const nextCursor = hasMore && lastAsset
-    ? encodeGalleryCursor(lastAsset.created_at_cursor, lastAsset.asset_key, source)
+    ? encodeGalleryCursor(lastAsset.position, lastAsset.photo_source, source)
     : null;
   const responseAssets = await Promise.all(pageAssets.map(async ({
-    created_at_cursor: _createdAtCursor,
+    position: _position,
     preview_storage_key,
     ...asset
   }) => {

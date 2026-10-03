@@ -66,6 +66,7 @@ describe('gallery viewer boundary', () => {
         size_bytes: '2048',
         display_name: 'Published photo.jpg',
         created_at: '2026-09-19T12:00:00.000Z',
+        position: 1,
         moderation_status: 'published',
       },
       {
@@ -318,6 +319,7 @@ describe('gallery viewer boundary', () => {
       storage_key: `gallery/published-photo-${index}.jpg`,
       thumbnail_key: `gallery/published-photo-${index}.preview.webp`,
       display_name: `Published photo ${index}.jpg`,
+      position: String(index + 1),
       created_at: new Date(Date.parse('2026-09-19T12:00:00.000Z') + index * 60_000).toISOString(),
       moderation_status: 'published',
     }));
@@ -329,8 +331,6 @@ describe('gallery viewer boundary', () => {
       request(`/api/gallery?token=${galleryToken}`, { 'x-gallery-session': tabSessionId }),
     );
     const firstBody = await firstResponse.json();
-    const firstQuery = mocks.sql.mock.calls[1] as unknown[];
-    const firstQueryText = (firstQuery[0] as TemplateStringsArray).join('');
 
     expect(firstResponse.status).toBe(200);
     expect(firstBody.assets).toHaveLength(48);
@@ -344,10 +344,9 @@ describe('gallery viewer boundary', () => {
       expect.objectContaining({ useCache: true }),
     );
     expect(firstBody.next_cursor).toEqual(expect.any(String));
-    expect(firstQueryText).toContain('ORDER BY created_at ASC, public_key ASC');
     expect(JSON.parse(Buffer.from(firstBody.next_cursor, 'base64url').toString('utf8'))).toEqual({
-      createdAt: pagedAssets[47].created_at,
-      assetKey: 'published-photo-47',
+      position: pagedAssets[47].position,
+      photoSource: 'guest',
       source: 'all',
     });
     expect(mocks.sql).toHaveBeenCalledTimes(3);
@@ -369,16 +368,13 @@ describe('gallery viewer boundary', () => {
       }),
     );
     const secondBody = await secondResponse.json();
-    const secondQuery = mocks.sql.mock.calls[1] as unknown[];
-    const secondQueryText = (secondQuery[0] as TemplateStringsArray).join('');
 
     expect(secondResponse.status).toBe(200);
     expect(secondBody.assets).toHaveLength(1);
     expect(secondBody.assets[0].asset_key).toBe('published-photo-48');
     expect(secondBody.next_cursor).toBeNull();
-    expect(secondQueryText).toContain('AND (created_at, public_key) > (');
-    expect(secondQuery).toContain(pagedAssets[47].created_at);
-    expect(secondQuery).toContain('published-photo-47');
+    expect(mocks.sql.mock.calls[1]).toContain(pagedAssets[47].position);
+    expect(mocks.sql.mock.calls[1]).toContain(1);
     expect(mocks.sql).toHaveBeenCalledTimes(2);
   });
   it('filters gallery pages by source and rejects cursors from another source', async () => {
@@ -391,6 +387,7 @@ describe('gallery viewer boundary', () => {
       storage_key: `gallery/professional-photo-${index}.jpg`,
       thumbnail_key: `gallery/professional-photo-${index}.preview.webp`,
       display_name: `Professional photo ${index}.jpg`,
+      position: String(index + 1),
       created_at: new Date(Date.parse('2026-09-19T12:00:00.000Z') + index * 60_000).toISOString(),
       moderation_status: 'published',
     }));
@@ -400,17 +397,14 @@ describe('gallery viewer boundary', () => {
 
     const response = await listGallery(request(`/api/gallery?token=${galleryToken}&source=professional`));
     const body = await response.json();
-    const listQuery = mocks.sql.mock.calls[1] as unknown[];
-    const queryText = (listQuery[0] as TemplateStringsArray).join('');
 
     expect(response.status).toBe(200);
     expect(body.assets).toHaveLength(48);
     expect(body.assets[0].photo_source).toBe('professional');
-    expect(queryText).toContain('photo_source');
-    expect(listQuery).toContain('professional');
+    expect(mocks.sql.mock.calls[1]).toContain('professional');
     expect(JSON.parse(Buffer.from(body.next_cursor, 'base64url').toString('utf8'))).toEqual({
-      createdAt: professionalAssets[47].created_at,
-      assetKey: 'professional-photo-47',
+      position: professionalAssets[47].position,
+      photoSource: 'professional',
       source: 'professional',
     });
 
