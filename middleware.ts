@@ -20,7 +20,8 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/gallery') ||
     pathname.startsWith('/save-the-date') ||
     pathname.startsWith('/invite-email-preview') ||
-    pathname.startsWith('/reminder-email-preview');
+    pathname.startsWith('/reminder-email-preview') ||
+    pathname.startsWith('/gallery-announcement-preview');
 
   if (isRoot || isInternal || isPublicAsset || isAllowedRoute) {
     return NextResponse.next();

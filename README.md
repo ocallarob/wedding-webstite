@@ -27,11 +27,14 @@ RESEND_API_KEY=...
 ADMIN_SECRET=...
 NEXT_PUBLIC_BASE_URL=https://alannah-rob.ie
 PAPER_RSVP_CODE=your-shared-paper-invite-code
+BLOB_READ_WRITE_TOKEN=...
 ```
 
 Notes:
 - `ADMIN_SECRET` is used for dashboard login and admin API actions.
 - `NEXT_PUBLIC_BASE_URL` is used in email RSVP links.
+- `BLOB_READ_WRITE_TOKEN` authenticates private Vercel Blob signed-URL issuance. On Vercel, a connected private store may use `BLOB_STORE_ID` with the platform-managed `VERCEL_OIDC_TOKEN` instead.
+- The event gallery never serves Blob bytes through the application; `gallery_assets.storage_key` is signed into short-lived private URLs only.
 - `PAPER_RSVP_CODE` gates the paper-invite lookup page (`/rsvp/paper?code=...`).
 - For real recipients, keep `NEXT_PUBLIC_BASE_URL` on your branded domain (not preview/tunnel).
 
@@ -42,6 +45,8 @@ Current model (no legacy guest/partner dependency):
 - `household_members`
 - `household_rsvps`
 - `household_rsvp_opens`
+- `gallery_capabilities`
+- `gallery_assets`
 
 Run schema migration:
 
@@ -49,11 +54,26 @@ Run schema migration:
 pnpm db:migrate
 ```
 
+The migration preserves existing tables; legacy tables are not dropped.
+
 Seed test data:
 
 ```bash
 pnpm db:seed
 ```
+
+## Gallery asset import
+
+Each batch must specify its source:
+
+```bash
+pnpm gallery:upload -- --source guest /path/to/table-camera-photos
+pnpm gallery:upload -- --source professional /path/to/professional-photos
+```
+
+CLI imports are published immediately. Re-importing an existing pending CLI asset publishes it; dashboard moderation remains available for later rejection or removal. The viewer filters by source on the server and loads 48 assets per page; signed previews are returned in each page and image bytes load as cards approach the viewport.
+Photo imports use Sharp to generate private WebP thumbnails up to 800px wide and upload them with the Blob credentials above. Unsupported or failed conversions fall back to the original. Re-importing the same files backfills missing thumbnails and updates their source classification.
+
 
 ## CSV Guest Import
 
@@ -111,31 +131,29 @@ Behavior:
   2. one best match only (paper invite households only)
   3. continue into normal `/rsvp?token=...` flow
 
-- `/dashboard`  
+
+- `/gallery?token=...`
+  Unlisted event gallery link. All displays blocks of up to 50 professional photos, then up to 50 guest photos, repeating while each source has photos; source filters preserve each source's upload order. The dashboard sends a distinct Gallery announcement with this link and asks recipients to send photographs or videos to one of us on WhatsApp.
+
+- `/gallery-announcement-preview`
+  HTML-only preview of the Gallery announcement; it never sends email.
+
+- `/dashboard`
   Admin dashboard with:
   - guest-level summary counts
   - household table
   - send status
   - RSVP open tracking
-  - one-click reminder batch
+  - manual, throttled Gallery announcement action with sent and retryable failed status
+  - single-recipient Gallery test announcement: enter your email and choose a household to preview; the subject is prefixed with `[Test]`
+  - collapsible Pending gallery assets and Published assets sections, closed by default
+
+Invitation and RSVP reminder email sending is disabled. The Gallery announcement is
+the separate post-wedding message; the preview route renders HTML only.
+Test announcements create an additional valid Gallery link for the selected household without rotating existing links or changing announcement sent/failure status. Opens and downloads from that link count against that household. The bulk-send button is not a test: it sends to all eligible, unsent households.
 
 Admin APIs:
-- `POST /api/invites/send` (send new invites)
-- `POST /api/dashboard` with `action=send_reminders` (reminders)
-- `POST /api/reminders/test` (send one test reminder without updating counters)
 - `GET /api/dashboard` (`x-admin-secret` header auth)
-
-Send a test reminder:
-
-```bash
-curl -X POST http://localhost:3000/api/reminders/test \
-  -H "Content-Type: application/json" \
-  -H "x-admin-secret: $ADMIN_SECRET" \
-  -d '{"to":"you@example.com","displayName":"Test Guest"}'
-```
-
-Optional JSON fields are `eveningInvite` (boolean) and `rsvpToken` (string). If no
-token is supplied, the email uses a clearly non-production example RSVP token.
 
 ## Email + Deliverability Notes
 
